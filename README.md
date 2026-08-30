@@ -1,6 +1,6 @@
-# MSB Collection Decision Copilot — TASK-001 and TASK-002
+# MSB Collection Decision Copilot — TASK-001 through TASK-003
 
-This repository implements the deterministic synthetic-data foundation from TASK-001 and the deterministic policy/rule engine from TASK-002. It does not implement recovery scoring, treatment/channel/time optimization, Agent/GreenNode integration, frontend, AEV, ML, or real MSB integrations.
+This repository implements the deterministic synthetic-data foundation from TASK-001, policy/rule engine from TASK-002, and approved prototype Recovery Opportunity scoring from TASK-003. It does not implement treatment/channel/time recommendations, Agent/GreenNode integration, frontend, AEV, ML, or real MSB integrations.
 
 All generated identifiers and content are visibly synthetic. The default configuration creates exactly 3,000 CIFs, including stable `GOLDEN_G01` through `GOLDEN_G20` fixtures. `G01`–`G05` are HERO fixtures. Normal records use correlated archetypes (stable income, contactability, and operation/payment patterns); these are prototype fixtures and do not claim to represent MSB’s population.
 
@@ -53,6 +53,21 @@ PYTHONPATH=src python -m msb_policy.validate \
 The engine emits one structured JSONL result per CIF. Its deterministic pipeline is aggregation → base routing → explicit synthetic challenge override → no hard suppression (none is defined in the locked rule base) → PTP and source next-action facts → baseline benchmark ordering. The default PTP grace period is the configurable one-day prototype value and can be changed with `--ptp-grace-days`; it is not represented as production MSB policy.
 
 Policy results keep technical call statuses separate from business operation outcomes. They contain no Recovery Opportunity score, treatment recommendation, optimized channel, or optimized contact time.
+
+## Evaluate TASK-003 Recovery Opportunity
+
+TASK-003 uses the explicit prototype formulas in `TASK-003_SCORING_CONTRACT.md`. Generate TASK-001 data first, then run:
+
+```bash
+PYTHONPATH=src python -m msb_recovery.cli \
+  --input build/synthetic-data \
+  --output build/recovery-opportunity
+PYTHONPATH=src python -m msb_recovery.validate \
+  --input build/synthetic-data \
+  --output build/recovery-opportunity/golden_recovery_validation.json
+```
+
+The deterministic JSONL output contains source-derived features, component evidence, score traces, baseline rank, Recovery Opportunity rank, and immutable TASK-002 routing facts. Missing evidence is marked `MISSING` and contributes zero; it is not treated as negative behavior. Strategic Adjustment is zero for every V1 record. These synthetic prototype scores are not production payment probabilities or real MSB performance metrics.
 
 ## Technical assumptions
 

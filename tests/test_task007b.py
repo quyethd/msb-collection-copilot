@@ -189,30 +189,29 @@ class TestInvestigateOnlyUsesExistingEvidence(Task007BTestBase):
         self.assertEqual(resp.decision["rule_id"], "NBA-300")
 
 
-class TestSimulateReturnsTask008Required(Task007BTestBase):
-    """6. SIMULATE returns TASK_008_REQUIRED."""
+class TestSimulateModeEnabled(Task007BTestBase):
+    """6. SIMULATE now enabled with TASK-008 engine."""
 
-    def test_simulate_returns_not_implemented(self):
-        resp = self._invoke("SIMULATE", "SYN002846")
-        self.assertEqual(resp.status, "error")
-        self.assertEqual(resp.error["code"], "NOT_IMPLEMENTED")
-        self.assertEqual(resp.error["message"], SIMULATE_RESULT)
+    def test_simulate_with_changes_returns_success(self):
+        resp = self.runtime.invoke("SIMULATE", "SYN002846", changes={"inflow_7d": 0, "net_cashflow_30d": 0})
+        self.assertEqual(resp.status, "success")
+        self.assertEqual(resp.mode, "SIMULATE")
+        self.assertIsNotNone(resp.simulation)
 
-    def test_simulate_does_not_call_tools(self):
-        resp = self._invoke("SIMULATE", "SYN002846")
-        self.assertEqual(resp.tools_used, [])
-        self.assertIsNone(resp.decision)
+    def test_simulate_uses_simulate_tool(self):
+        resp = self.runtime.invoke("SIMULATE", "SYN002846", changes={"inflow_7d": 0})
+        self.assertIn("simulate_decision", resp.tools_used)
 
     def test_simulate_does_not_mutate_data(self):
         before = self.repo.context("SYN002846")
-        self._invoke("SIMULATE", "SYN002846")
+        self.runtime.invoke("SIMULATE", "SYN002846", changes={"inflow_7d": 0, "net_cashflow_30d": 0})
         after = self.repo.context("SYN002846")
         self.assertEqual(before, after)
 
-    def test_simulate_summary_states_not_enabled(self):
-        resp = self._invoke("SIMULATE", "SYN002846")
-        self.assertIn("not yet enabled", resp.summary)
-        self.assertIn("TASK-008", resp.summary)
+    def test_simulate_preserves_before_decision(self):
+        resp = self.runtime.invoke("SIMULATE", "SYN002846", changes={"inflow_7d": 0, "net_cashflow_30d": 0})
+        self.assertEqual(resp.simulation["before"]["treatment"], "WAIT_SELF_CURE")
+        self.assertEqual(resp.simulation["before"]["rule_id"], "NBA-300")
 
 
 class TestSyn999999NoFabrication(Task007BTestBase):
@@ -330,8 +329,9 @@ class TestExistingRegressionsPreserved(Task007BTestBase):
 
     def test_tool_registry_includes_all_seven_tools(self):
         from msb_tools.registry import TOOL_REGISTRY
-        self.assertEqual(len(TOOL_REGISTRY), 7)
+        self.assertEqual(len(TOOL_REGISTRY), 8)
         self.assertIn("get_next_best_action", TOOL_REGISTRY)
+        self.assertIn("simulate_decision", TOOL_REGISTRY)
 
     def test_existing_six_tools_unchanged(self):
         from msb_tools.registry import TOOL_REGISTRY
@@ -369,10 +369,10 @@ class TestRouterDeterminism(unittest.TestCase):
         self.assertIsNone(extract_cif(123))
 
     def test_parse_payload(self):
-        mode, cif, msg = parse_payload({"mode": "EXPLAIN", "cif": "SYN002846", "message": "why?"})
+        mode, cif, msg, changes = parse_payload({"mode": "EXPLAIN", "cif": "SYN002846", "message": "why?"})
         self.assertEqual(mode, "EXPLAIN")
         self.assertEqual(cif, "SYN002846")
-        mode, cif, msg = parse_payload({"message": "What should I do with SYN002846?"})
+        mode, cif, msg, changes = parse_payload({"message": "What should I do with SYN002846?"})
         self.assertEqual(mode, "PLAN")
         self.assertEqual(cif, "SYN002846")
 

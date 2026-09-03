@@ -82,7 +82,7 @@ class ToolLayerTest(unittest.TestCase):
     def tearDownClass(cls): cls.temp.cleanup()
 
     def test_registry_exact(self):
-        self.assertEqual(list(TOOL_REGISTRY), ["get_portfolio", "get_customer_360", "get_collection_history", "get_cashflow_intelligence", "get_collection_policy", "get_recovery_opportunity", "get_next_best_action"])
+        self.assertEqual(list(TOOL_REGISTRY), ["get_portfolio", "get_customer_360", "get_collection_history", "get_cashflow_intelligence", "get_collection_policy", "get_recovery_opportunity", "get_next_best_action", "simulate_decision"])
 
     def test_unknown_tool_and_non_object_arguments(self):
         self.assertEqual(self.call("unknown", {})["error"]["code"], "INVALID_ARGUMENT")
@@ -91,7 +91,7 @@ class ToolLayerTest(unittest.TestCase):
     def test_schema_and_manifest_deterministic(self):
         self.assertEqual(json.dumps(schema_document(), sort_keys=True), json.dumps(schema_document(), sort_keys=True))
         self.assertEqual(registry_manifest("2026-08-28"), registry_manifest("2026-08-28"))
-        self.assertEqual(len(schema_document()["tools"]), 7)
+        self.assertEqual(len(schema_document()["tools"]), 8)
 
     def test_exported_output_schemas_are_meaningful(self):
         document = schema_document(); definitions = document["$defs"]
@@ -138,6 +138,7 @@ class ToolLayerTest(unittest.TestCase):
             "get_collection_policy": {"cif": "GOLDEN_G02"},
             "get_recovery_opportunity": {"cif": "GOLDEN_G02"},
             "get_next_best_action": {"cif": "GOLDEN_G02"},
+            "simulate_decision": {"cif": "GOLDEN_G02", "changes": {"inflow_7d": 20_000_000}},
         }
         for tool_name, arguments in samples.items():
             data = self.call(tool_name, arguments)["data"]

@@ -36,11 +36,14 @@ def infer_mode(message: Any, explicit: str | None = None) -> Mode:
     return "PLAN"
 
 
-def parse_payload(payload: dict[str, Any]) -> tuple[Mode, str | None, str | None]:
+def parse_payload(payload: dict[str, Any]) -> tuple[Mode, str | None, str | None, dict[str, Any]]:
     mode = infer_mode(payload.get("message"), payload.get("mode"))
     cif = payload.get("cif")
     if not isinstance(cif, str) or not cif.strip():
         cif = extract_cif(payload.get("message"))
     else:
         cif = cif.strip()
-    return mode, cif, payload.get("message")
+    changes = payload.get("changes", {})
+    if not isinstance(changes, dict):
+        changes = {}
+    return mode, cif, payload.get("message"), changes

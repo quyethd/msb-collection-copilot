@@ -12,6 +12,7 @@ from .schemas import schema_document, write_schema_artifacts
 
 FORBIDDEN = {"treatment", "recommended_treatment", "next_best_action", "recommended_channel", "recommended_when", "best_contact_time", "action_priority", "expected_recovery", "expected_payment", "recovery_probability", "payment_probability", "cure_probability", "confidence_score", "agent_reasoning", "chain_of_thought", "ai_explanation", "model_explanation", "aev", "roi"}
 READ_ONLY_TOOLS = {"get_portfolio", "get_customer_360", "get_collection_history", "get_cashflow_intelligence", "get_collection_policy", "get_recovery_opportunity"}
+PUBLIC_TOOL_ALLOWLIST = frozenset({"get_customer_360", "get_next_best_action", "simulate_decision"})
 
 
 def _keys(value: Any) -> set[str]:
@@ -38,8 +39,8 @@ def validate(input_directory: Path) -> dict[str, Any]:
     call = lambda name, args: invoke_tool(name, args, repository=repo)
     contexts = {cif: repo.context(cif) for cif in repo.cifs}
     portfolio = call("get_portfolio", {"limit": 100})
-    if len(TOOL_REGISTRY) != 7: errors.append("registry count is not seven")
-    if len(schema_document()["tools"]) != 7: errors.append("schema count is not seven")
+    if len(TOOL_REGISTRY) != 8: errors.append("registry count is not eight")
+    if len(schema_document()["tools"]) != 8: errors.append("schema count is not eight")
     if len(repo.cifs) != 3000: errors.append("portfolio source does not contain 3,000 CIFs")
     invalids = [("get_portfolio", {"limit": 0}), ("get_portfolio", {"limit": 101}), ("get_portfolio", {"offset": -1}), ("get_portfolio", {"movement": "UP"}), ("get_collection_history", {"cif": "GOLDEN_G02", "event_types": ["SUCCESS"]}), ("get_collection_history", {"cif": "GOLDEN_G02", "event_types": ["CALL", "CALL"]}), ("get_customer_360", {"cif": ""})]
     failed_invalid = sum(not call(name, args)["ok"] for name, args in invalids)

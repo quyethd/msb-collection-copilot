@@ -13,6 +13,7 @@ DESCRIPTIONS = {
     "get_collection_policy": "Return accepted read-only collection routes, suppression facts, source next-action fields and deterministic policy trace for one synthetic CIF.",
     "get_recovery_opportunity": "Return accepted Recovery Opportunity score, component scores, ranks, movement and supporting deterministic evidence for one synthetic CIF; the score is not a probability or expected value.",
     "get_next_best_action": "Return the accepted deterministic TASK-007A Next Best Action decision for one synthetic CIF by delegating to the NBA engine; decision fields are deterministic and never LLM-generated.",
+    "simulate_decision": "Run a deterministic what-if simulation for one synthetic CIF by applying temporary changes and replaying the accepted TASK-007A NBA engine; original data is never mutated.",
 }
 
 
@@ -48,6 +49,7 @@ def schema_document() -> dict[str, Any]:
         {"name": "get_collection_policy", "description": DESCRIPTIONS["get_collection_policy"], "input_schema": single, "output_schema": {"$ref": "#/$defs/CollectionPolicyOutput"}},
         {"name": "get_recovery_opportunity", "description": DESCRIPTIONS["get_recovery_opportunity"], "input_schema": single, "output_schema": {"$ref": "#/$defs/RecoveryOpportunityOutput"}},
         {"name": "get_next_best_action", "description": DESCRIPTIONS["get_next_best_action"], "input_schema": single, "output_schema": {"$ref": "#/$defs/NextBestActionOutput"}},
+        {"name": "simulate_decision", "description": DESCRIPTIONS["simulate_decision"], "input_schema": _object({"cif": cif, "changes": {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}}}, ["cif"]), "output_schema": {"$ref": "#/$defs/SimulateDecisionOutput"}},
     ]
     route = {"type": "string", "enum": ["CALL", "CBS", "OTHER"]}
     movement = {"type": "string", "enum": ["DEMOTED", "PROMOTED", "UNCHANGED"]}
@@ -268,6 +270,16 @@ def _source_and_context_definitions(route: dict[str, Any], movement: dict[str, A
         "CollectionPolicyOutput": _object(policy_fields, list(policy_fields)),
         "RecoveryOpportunityOutput": _object(recovery_fields, list(recovery_fields)),
         "NextBestActionOutput": _object(nba_fields, list(nba_fields)),
+        "SimulateDecisionOutput": _object({
+            "status": {"type": "string"}, "cif": {"type": "string"},
+            "before": {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}},
+            "after": {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}},
+            "changes_applied": {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}},
+            "decision_changed": {"type": "boolean"},
+            "diff": _array({"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}}),
+            "simulation_version": {"type": "string"},
+            "synthetic_data": {"type": "boolean"},
+        }, ["status", "cif", "before", "after", "changes_applied", "decision_changed", "diff", "simulation_version", "synthetic_data"]),
         "JsonValue": {"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "boolean"},
                                   {"type": "null"}, _array({"$ref": "#/$defs/JsonValue"}),
                                   {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}}]},
@@ -301,7 +313,7 @@ def _dereference_properties(name: str) -> dict[str, Any]:
 
 
 def registry_manifest(reference_date: str) -> dict[str, Any]:
-    return {"schema_version": SCHEMA_VERSION, "tool_count": 7,
+    return {"schema_version": SCHEMA_VERSION, "tool_count": 8,
             "tool_names": list(DESCRIPTIONS), "synthetic_data": True,
             "synthetic_label": "SYNTHETIC PROTOTYPE DATA", "reference_date": reference_date}
 

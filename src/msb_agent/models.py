@@ -8,7 +8,7 @@ MODES: tuple[Mode, ...] = ("PLAN", "INVESTIGATE", "EXPLAIN", "SIMULATE")
 
 CANONICAL_MODEL = "glm-5.2"
 SIMULATE_RESULT = "TASK_008_REQUIRED"
-AGENT_VERSION = "TASK-007B-V1"
+AGENT_VERSION = "TASK-008-V1"
 
 FORBIDDEN_LLM_FIELDS = frozenset({
     "treatment", "channel", "objective", "when", "final_route", "rule_id",
@@ -29,6 +29,7 @@ class AgentResponse:
     synthetic_data: bool
     agent_version: str
     error: dict[str, str] | None = None
+    simulation: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -43,6 +44,7 @@ class AgentResponse:
             "synthetic_data": self.synthetic_data,
             "agent_version": self.agent_version,
             **({"error": self.error} if self.error else {}),
+            **({"simulation": self.simulation} if self.simulation is not None else {}),
         }
 
 

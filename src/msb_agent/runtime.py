@@ -9,7 +9,6 @@ ToolCaller = Callable[[str, dict[str, Any]], dict[str, Any]]
 _MODE_LABELS = {"PLAN": "Plan", "INVESTIGATE": "Investigate", "EXPLAIN": "Explain", "SIMULATE": "Simulate"}
 _OVERRIDE_NOTICE = " The agent cannot override accepted collection policy."
 
-
 def _tool_ok(envelope: dict[str, Any]) -> bool:
     return bool(envelope.get("ok"))
 
@@ -144,12 +143,13 @@ class AgentRuntime:
         self.tool_caller = tool_caller
         self.llm_client = llm_client
 
-    def invoke(self, mode: str, cif: str | None, message: str | None = None) -> AgentResponse:
+    def invoke(self, mode: str, cif: str | None, message: str | None = None,
+               changes: dict[str, Any] | None = None) -> AgentResponse:
         if mode not in ("PLAN", "INVESTIGATE", "EXPLAIN", "SIMULATE"):
             return AgentResponse("error", "PLAN", cif, None, [], "Unknown mode", [], None, True, AGENT_VERSION,
                                  {"code": "INVALID_ARGUMENT", "message": f"Unknown mode: {mode}"})
         if mode == "SIMULATE":
-            return self._simulate(cif)
+            return self._simulate(cif, changes or {})
         if not cif:
             return AgentResponse("error", mode, None, None, [], "No CIF provided", [], None, True, AGENT_VERSION,
                                  {"code": "INVALID_ARGUMENT", "message": "A synthetic CIF is required"})
@@ -195,8 +195,44 @@ class AgentRuntime:
         return AgentResponse("success", "INVESTIGATE", cif, decision_from_nba(nba), evidence, summary,
                              ["get_next_best_action", "get_customer_360"], model, True, AGENT_VERSION)
 
-    def _simulate(self, cif: str | None) -> AgentResponse:
-        summary = ("Simulation is not yet enabled. TASK-008 (What-if Engine) is required. "
-                   "No source data was mutated. No hypothetical business rules were applied.")
-        return AgentResponse("error", "SIMULATE", cif, None, [], summary, [], None, True, AGENT_VERSION,
-                             {"code": "NOT_IMPLEMENTED", "message": SIMULATE_RESULT})
+    def _simulate(self, cif: str | None, changes: dict[str, Any]) -> AgentResponse:
+        if not cif:
+            return AgentResponse("error", "SIMULATE", cif, None, [], "No CIF provided for simulation.",
+                                 [], None, True, AGENT_VERSION,
+                                 {"code": "INVALID_ARGUMENT", "message": "A synthetic CIF is required for simulation"})
+        sim_envelope = self.tool_caller("simulate_decision", {"cif": cif, "changes": changes})
+        if not _tool_ok(sim_envelope):
+            error = sim_envelope.get("error", {})
+            return AgentResponse("error", "SIMULATE", cif, None, [],
+                                 f"Simulation failed: {error.get('message', 'unknown error')}",
+                                 ["simulate_decision"], None, True, AGENT_VERSION,
+                                 {"code": error.get("code", "INTERNAL_ERROR"),
+                                  "message": error.get("message", "Simulation failed")})
+        sim_data = _tool_data(sim_envelope)
+        diff = sim_data.get("diff", [])
+        after_decision = sim_data.get("after", {})
+        summary, model = self._simulate_summary(sim_data, self.llm_client)
+        return AgentResponse("success", "SIMULATE", cif, after_decision, diff, summary,
+                             ["simulate_decision"], model, True, AGENT_VERSION,
+                             simulation=sim_data)
+
+    def _simulate_summary(self, sim_data: dict[str, Any], llm: LLMClient | None) -> tuple[str, str | None]:
+        before = sim_data.get("before", {})
+        after = sim_data.get("after", {})
+        changed = sim_data.get("decision_changed", False)
+        diff_fields = [entry.get("field", "") for entry in sim_data.get("diff", [])]
+        template = (
+            f"SIMULATION RESULT (deterministic):\n"
+            f"  Before: {before.get('treatment', '?')} ({before.get('rule_id', '?')})\n"
+            f"  After: {after.get('treatment', '?')} ({after.get('rule_id', '?')})\n"
+            f"  Decision changed: {changed}\n"
+            f"  Changed fields: {diff_fields}\n"
+            f"The simulation result is deterministic from the TASK-008 engine.")
+        if llm is None:
+            return template, None
+        prompt = (
+            "You are a Vietnamese collection decision assistant. Explain the following simulation result "
+            "in business-friendly Vietnamese. Do NOT change any decision values. Do NOT calculate new "
+            "decisions. Only explain what changed and why, in Vietnamese.\n" + template)
+        content, model = llm.complete(prompt, max_tokens=250, temperature=0)
+        return content or template, model

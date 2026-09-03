@@ -4,6 +4,7 @@ from typing import Any
 
 from msb_nba.config import DEFAULT_CONFIG
 from msb_nba.engine import decide
+from msb_simulation.engine import SimulationEngine
 
 from .errors import ToolFailure, invalid
 from .repository import ToolRepository
@@ -136,3 +137,16 @@ def get_next_best_action(arguments: dict[str, Any], repository: ToolRepository) 
         "recovery_opportunity_score": context["recovery_opportunity"]["recovery_opportunity_score"],
         "provenance": decision.provenance,
     }
+
+
+def simulate_decision(arguments: dict[str, Any], repository: ToolRepository) -> dict[str, Any]:
+    unknown = set(arguments) - {"cif", "changes"}
+    if unknown:
+        raise invalid(f"unknown argument(s): {sorted(unknown)}")
+    cif = arguments.get("cif")
+    if not isinstance(cif, str) or not cif.strip():
+        raise invalid("cif must be a non-blank string")
+    changes = arguments.get("changes", {})
+    engine = SimulationEngine(repository)
+    result = engine.simulate(cif, changes)
+    return result.to_dict()

@@ -74,9 +74,9 @@ def _maas_probe() -> dict:
 def handler(payload: dict, context: RequestContext) -> dict:
     if payload.get("connectivity_check") == "maas":
         return _maas_probe()
-    mode, cif, message = parse_payload(payload)
+    mode, cif, message, changes = parse_payload(payload)
     runtime = _build_runtime()
-    response = runtime.invoke(mode, cif, message)
+    response = runtime.invoke(mode, cif, message, changes)
     return response.to_dict()
 
 

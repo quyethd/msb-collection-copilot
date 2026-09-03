@@ -3,11 +3,12 @@ from __future__ import annotations
 import hmac, json, os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from msb_tools.registry import TOOL_REGISTRY, invoke_tool
+from msb_tools.registry import invoke_tool
+from msb_tools.validate import PUBLIC_TOOL_ALLOWLIST
 
 
 class ToolHandler(BaseHTTPRequestHandler):
-    server_version = "MSBCollectionTool/0.2"
+    server_version = "MSBCollectionTool/0.3"
 
     def _send(self, status: int, body: dict) -> None:
         encoded = json.dumps(body, sort_keys=True).encode(); self.send_response(status)
@@ -24,7 +25,7 @@ class ToolHandler(BaseHTTPRequestHandler):
         if not self.path.startswith("/tools/"):
             self._send(404, {"error": {"code": "NOT_FOUND", "message": "Route not found"}}); return
         tool_name = self.path[len("/tools/"):]
-        if tool_name not in TOOL_REGISTRY:
+        if tool_name not in PUBLIC_TOOL_ALLOWLIST:
             self._send(404, {"error": {"code": "NOT_FOUND", "message": "Route not found"}}); return
         try: arguments = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
         except (ValueError, json.JSONDecodeError):

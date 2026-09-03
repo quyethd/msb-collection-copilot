@@ -7,7 +7,8 @@ from .errors import ToolFailure, invalid
 from .models import ToolEnvelope
 from .repository import ToolRepository
 from .tools import (get_cashflow_intelligence, get_collection_history, get_collection_policy,
-                    get_customer_360, get_next_best_action, get_portfolio, get_recovery_opportunity)
+                    get_customer_360, get_next_best_action, get_portfolio, get_recovery_opportunity,
+                    simulate_decision)
 
 ToolCallable = Callable[[dict[str, Any], ToolRepository], dict[str, Any]]
 TOOL_REGISTRY: dict[str, ToolCallable] = {
@@ -18,6 +19,7 @@ TOOL_REGISTRY: dict[str, ToolCallable] = {
     "get_collection_policy": get_collection_policy,
     "get_recovery_opportunity": get_recovery_opportunity,
     "get_next_best_action": get_next_best_action,
+    "simulate_decision": simulate_decision,
 }
 
 

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from msb_nba.config import DEFAULT_CONFIG
+from msb_nba.engine import decide
+
 from .errors import ToolFailure, invalid
 from .repository import ToolRepository
 
@@ -104,3 +107,32 @@ def get_recovery_opportunity(arguments: dict[str, Any], repository: ToolReposito
     context = repository.context(_only_cif(arguments, repository))
     return {"cif": context["cif"], **context["recovery_opportunity"], **context["ranking"],
             "score_semantics": "Explainable prototype prioritization score; not probability of payment or cure, expected recovery, or expected monetary value."}
+
+
+def get_next_best_action(arguments: dict[str, Any], repository: ToolRepository) -> dict[str, Any]:
+    cif = _only_cif(arguments, repository)
+    context = repository.context(cif)
+    calls = repository.calls_for_cif(cif)
+    decision = decide(context, calls, DEFAULT_CONFIG)
+    return {
+        "cif": decision.cif,
+        "decision_version": decision.decision_version,
+        "reference_date": decision.reference_date,
+        "final_route": decision.policy["final_route"],
+        "hard_suppressed": decision.policy["hard_suppressed"],
+        "treatment": decision.recommendation.treatment,
+        "channel": decision.recommendation.channel,
+        "objective": decision.recommendation.objective,
+        "when": {"type": decision.recommendation.when.type,
+                 "datetime": decision.recommendation.when.datetime,
+                 "date": decision.recommendation.when.date,
+                 "window": decision.recommendation.when.window},
+        "rule_id": decision.selected_rule.rule_id,
+        "priority": decision.selected_rule.priority,
+        "reason_code": decision.selected_rule.reason_code,
+        "decision_trace": [{"rule_id": entry.rule_id, "matched": entry.matched, "effect": entry.effect}
+                           for entry in decision.decision_trace],
+        "evidence_refs": decision.evidence_refs,
+        "recovery_opportunity_score": context["recovery_opportunity"]["recovery_opportunity_score"],
+        "provenance": decision.provenance,
+    }

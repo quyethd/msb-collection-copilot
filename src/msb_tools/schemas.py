@@ -12,6 +12,7 @@ DESCRIPTIONS = {
     "get_cashflow_intelligence": "Return accepted cashflow facts, source transactions and deterministic scoring evidence for one synthetic CIF while preserving missing values.",
     "get_collection_policy": "Return accepted read-only collection routes, suppression facts, source next-action fields and deterministic policy trace for one synthetic CIF.",
     "get_recovery_opportunity": "Return accepted Recovery Opportunity score, component scores, ranks, movement and supporting deterministic evidence for one synthetic CIF; the score is not a probability or expected value.",
+    "get_next_best_action": "Return the accepted deterministic TASK-007A Next Best Action decision for one synthetic CIF by delegating to the NBA engine; decision fields are deterministic and never LLM-generated.",
 }
 
 
@@ -46,6 +47,7 @@ def schema_document() -> dict[str, Any]:
         {"name": "get_cashflow_intelligence", "description": DESCRIPTIONS["get_cashflow_intelligence"], "input_schema": single, "output_schema": {"$ref": "#/$defs/CashflowIntelligenceOutput"}},
         {"name": "get_collection_policy", "description": DESCRIPTIONS["get_collection_policy"], "input_schema": single, "output_schema": {"$ref": "#/$defs/CollectionPolicyOutput"}},
         {"name": "get_recovery_opportunity", "description": DESCRIPTIONS["get_recovery_opportunity"], "input_schema": single, "output_schema": {"$ref": "#/$defs/RecoveryOpportunityOutput"}},
+        {"name": "get_next_best_action", "description": DESCRIPTIONS["get_next_best_action"], "input_schema": single, "output_schema": {"$ref": "#/$defs/NextBestActionOutput"}},
     ]
     route = {"type": "string", "enum": ["CALL", "CBS", "OTHER"]}
     movement = {"type": "string", "enum": ["DEMOTED", "PROMOTED", "UNCHANGED"]}
@@ -238,6 +240,24 @@ def _source_and_context_definitions(route: dict[str, Any], movement: dict[str, A
     policy_fields = {"cif": {"type": "string"}, **_dereference_properties("PolicyFacts")}
     recovery_fields = {"cif": {"type": "string"}, **_dereference_properties("RecoveryFacts"),
                        **_dereference_properties("Ranking"), "score_semantics": {"type": "string"}}
+    when_shape = _object({
+        "type": {"enum": ["SOURCE_DATETIME", "SOURCE_DATE", "BEST_WINDOW", "TODAY", "NONE"]},
+        "datetime": string_or_null, "date": string_or_null, "window": string_or_null},
+        ["type", "datetime", "date", "window"])
+    trace_entry = _object({
+        "rule_id": {"type": "string"}, "matched": {"type": "boolean"}, "effect": string_or_null},
+        ["rule_id", "matched", "effect"])
+    nba_fields = {
+        "cif": {"type": "string"}, "decision_version": {"type": "string"},
+        "reference_date": {"type": "string", "format": "date"},
+        "final_route": route, "hard_suppressed": {"type": "boolean"},
+        "treatment": {"type": "string"}, "channel": {"type": "string"},
+        "objective": {"type": "string"}, "when": when_shape,
+        "rule_id": {"type": "string"}, "priority": {"type": "string"},
+        "reason_code": {"type": "string"}, "decision_trace": _array(trace_entry),
+        "evidence_refs": {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}},
+        "recovery_opportunity_score": {"type": "integer"},
+        "provenance": {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}}}
     return {
         "CallEventPayload": call_event, "OperationEventPayload": operation_event,
         "PaymentEventPayload": payment_event,
@@ -247,6 +267,7 @@ def _source_and_context_definitions(route: dict[str, Any], movement: dict[str, A
         "CashflowIntelligenceOutput": _object(cashflow_fields, list(cashflow_fields)),
         "CollectionPolicyOutput": _object(policy_fields, list(policy_fields)),
         "RecoveryOpportunityOutput": _object(recovery_fields, list(recovery_fields)),
+        "NextBestActionOutput": _object(nba_fields, list(nba_fields)),
         "JsonValue": {"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "boolean"},
                                   {"type": "null"}, _array({"$ref": "#/$defs/JsonValue"}),
                                   {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}}]},
@@ -280,7 +301,7 @@ def _dereference_properties(name: str) -> dict[str, Any]:
 
 
 def registry_manifest(reference_date: str) -> dict[str, Any]:
-    return {"schema_version": SCHEMA_VERSION, "tool_count": 6,
+    return {"schema_version": SCHEMA_VERSION, "tool_count": 7,
             "tool_names": list(DESCRIPTIONS), "synthetic_data": True,
             "synthetic_label": "SYNTHETIC PROTOTYPE DATA", "reference_date": reference_date}
 

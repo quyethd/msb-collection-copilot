@@ -53,3 +53,6 @@ class ToolRepository:
 
     def source_events(self, family: str) -> list[dict[str, str]]:
         return copy.deepcopy(self._events[family])
+
+    def calls_for_cif(self, cif: str) -> list[dict[str, str]]:
+        return [copy.deepcopy(row) for row in self._events["CALL"] if row["cif"] == cif]

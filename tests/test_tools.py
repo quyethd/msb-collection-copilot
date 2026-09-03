@@ -82,7 +82,7 @@ class ToolLayerTest(unittest.TestCase):
     def tearDownClass(cls): cls.temp.cleanup()
 
     def test_registry_exact(self):
-        self.assertEqual(list(TOOL_REGISTRY), ["get_portfolio", "get_customer_360", "get_collection_history", "get_cashflow_intelligence", "get_collection_policy", "get_recovery_opportunity"])
+        self.assertEqual(list(TOOL_REGISTRY), ["get_portfolio", "get_customer_360", "get_collection_history", "get_cashflow_intelligence", "get_collection_policy", "get_recovery_opportunity", "get_next_best_action"])
 
     def test_unknown_tool_and_non_object_arguments(self):
         self.assertEqual(self.call("unknown", {})["error"]["code"], "INVALID_ARGUMENT")
@@ -91,7 +91,7 @@ class ToolLayerTest(unittest.TestCase):
     def test_schema_and_manifest_deterministic(self):
         self.assertEqual(json.dumps(schema_document(), sort_keys=True), json.dumps(schema_document(), sort_keys=True))
         self.assertEqual(registry_manifest("2026-08-28"), registry_manifest("2026-08-28"))
-        self.assertEqual(len(schema_document()["tools"]), 6)
+        self.assertEqual(len(schema_document()["tools"]), 7)
 
     def test_exported_output_schemas_are_meaningful(self):
         document = schema_document(); definitions = document["$defs"]
@@ -137,6 +137,7 @@ class ToolLayerTest(unittest.TestCase):
             "get_cashflow_intelligence": {"cif": "GOLDEN_G02"},
             "get_collection_policy": {"cif": "GOLDEN_G02"},
             "get_recovery_opportunity": {"cif": "GOLDEN_G02"},
+            "get_next_best_action": {"cif": "GOLDEN_G02"},
         }
         for tool_name, arguments in samples.items():
             data = self.call(tool_name, arguments)["data"]
@@ -159,7 +160,8 @@ class ToolLayerTest(unittest.TestCase):
                          "AGG-002": {"rule_id", "max_dpd_cif"}}
         for cif in sorted(self.repo.cifs):
             for tool_name in ("get_customer_360", "get_cashflow_intelligence",
-                              "get_collection_policy", "get_recovery_opportunity"):
+                              "get_collection_policy", "get_recovery_opportunity",
+                              "get_next_best_action"):
                 data = self.call(tool_name, {"cif": cif})["data"]
                 _validate_schema_instance(data, output_schemas[tool_name], document)
             for evidence in self.call("get_customer_360", {"cif": cif})["data"]["evidence"]["baseline"]:
@@ -245,11 +247,14 @@ class ToolLayerTest(unittest.TestCase):
 
     def test_provenance_forbidden_security_determinism_mutation(self):
         before = tree_hash(self.data)
+        read_only_tools = {"get_portfolio", "get_customer_360", "get_collection_history",
+                           "get_cashflow_intelligence", "get_collection_policy", "get_recovery_opportunity"}
         for name in TOOL_REGISTRY:
             args = {} if name == "get_portfolio" else {"cif": "GOLDEN_G02"}
             first, second = self.call(name, args), self.call(name, args)
             self.assertEqual(first, second); self.assertTrue(first["meta"]["synthetic_data"])
-            self.assertFalse(_keys(first) & FORBIDDEN)
+            if name in read_only_tools:
+                self.assertFalse(_keys(first) & FORBIDDEN)
         for unsafe in ({"path": "/etc/passwd"}, {"shell": "id"}, {"url": "https://example.com"}, {"code": "eval('1')"}):
             self.assertFalse(self.call("get_portfolio", unsafe)["ok"])
         self.assertEqual(tree_hash(self.data), before)

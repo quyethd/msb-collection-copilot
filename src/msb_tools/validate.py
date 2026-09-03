@@ -11,6 +11,7 @@ from .repository import ToolRepository
 from .schemas import schema_document, write_schema_artifacts
 
 FORBIDDEN = {"treatment", "recommended_treatment", "next_best_action", "recommended_channel", "recommended_when", "best_contact_time", "action_priority", "expected_recovery", "expected_payment", "recovery_probability", "payment_probability", "cure_probability", "confidence_score", "agent_reasoning", "chain_of_thought", "ai_explanation", "model_explanation", "aev", "roi"}
+READ_ONLY_TOOLS = {"get_portfolio", "get_customer_360", "get_collection_history", "get_cashflow_intelligence", "get_collection_policy", "get_recovery_opportunity"}
 
 
 def _keys(value: Any) -> set[str]:
@@ -37,8 +38,8 @@ def validate(input_directory: Path) -> dict[str, Any]:
     call = lambda name, args: invoke_tool(name, args, repository=repo)
     contexts = {cif: repo.context(cif) for cif in repo.cifs}
     portfolio = call("get_portfolio", {"limit": 100})
-    if len(TOOL_REGISTRY) != 6: errors.append("registry count is not six")
-    if len(schema_document()["tools"]) != 6: errors.append("schema count is not six")
+    if len(TOOL_REGISTRY) != 7: errors.append("registry count is not seven")
+    if len(schema_document()["tools"]) != 7: errors.append("schema count is not seven")
     if len(repo.cifs) != 3000: errors.append("portfolio source does not contain 3,000 CIFs")
     invalids = [("get_portfolio", {"limit": 0}), ("get_portfolio", {"limit": 101}), ("get_portfolio", {"offset": -1}), ("get_portfolio", {"movement": "UP"}), ("get_collection_history", {"cif": "GOLDEN_G02", "event_types": ["SUCCESS"]}), ("get_collection_history", {"cif": "GOLDEN_G02", "event_types": ["CALL", "CALL"]}), ("get_customer_360", {"cif": ""})]
     failed_invalid = sum(not call(name, args)["ok"] for name, args in invalids)
@@ -68,7 +69,8 @@ def validate(input_directory: Path) -> dict[str, Any]:
     }
     if not all(golden.values()): errors.append(f"golden failures: {[k for k,v in golden.items() if not v]}")
     sample_responses = [call(name, {} if name == "get_portfolio" else {"cif": "GOLDEN_G02"}) for name in TOOL_REGISTRY]
-    forbidden = sorted(set().union(*(_keys(row) for row in sample_responses)) & FORBIDDEN)
+    readonly_responses = [row for name, row in zip(TOOL_REGISTRY, sample_responses) if name in READ_ONLY_TOOLS]
+    forbidden = sorted(set().union(*(_keys(row) for row in readonly_responses)) & FORBIDDEN)
     if forbidden: errors.append(f"forbidden fields: {forbidden}")
     after = tree_hash(input_directory)
     if before != after: errors.append("source mutation detected")

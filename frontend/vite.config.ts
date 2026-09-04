@@ -1,0 +1,2 @@
+import {defineConfig,loadEnv} from 'vite'; import react from '@vitejs/plugin-react';
+export default defineConfig(({mode})=>{const e={...loadEnv(mode,'..',''),...process.env}; return {plugins:[react()],server:{port:5173,proxy:{'/tools':{target:e.COLLECTION_TOOL_BASE_URL||'http://127.0.0.1:18080',changeOrigin:true,headers:{Authorization:`Bearer ${e.COLLECTION_TOOL_API_KEY||''}`}},'/demo':{target:e.COLLECTION_TOOL_BASE_URL||'http://127.0.0.1:18080',changeOrigin:true,headers:{Authorization:`Bearer ${e.COLLECTION_TOOL_API_KEY||''}`}}}}}});

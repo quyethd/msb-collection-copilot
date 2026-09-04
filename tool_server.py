@@ -1,6 +1,6 @@
 """Authenticated local HTTP adapter for the accepted TASK-006 tool layer + TASK-008B demo routes."""
 from __future__ import annotations
-import hmac, json, os
+import hmac, json, os, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from msb_tools.registry import invoke_tool
@@ -9,16 +9,41 @@ from msb_demo.engine import DemoEventEngine
 from msb_demo.models import DemoEvent
 from msb_tools.errors import ToolFailure
 from msb_tools.repository import ToolRepository
+from msb_agent.llm import maas_client_from_env
+from msb_agent.runtime import AgentRuntime
 
 _demo_engine: DemoEventEngine | None = None
+_repository: ToolRepository | None = None
+_repository_lock = threading.Lock()
+
+
+def _get_repository() -> ToolRepository:
+    global _repository
+    if _repository is None:
+        with _repository_lock:
+            if _repository is None:
+                _repository = ToolRepository(Path(os.environ.get("SYNTHETIC_DATA_DIR", "build/synthetic-data")))
+    return _repository
 
 
 def _get_demo_engine() -> DemoEventEngine:
     global _demo_engine
     if _demo_engine is None:
-        repo = ToolRepository(Path(os.environ.get("SYNTHETIC_DATA_DIR", "build/synthetic-data")))
+        repo = _get_repository()
         _demo_engine = DemoEventEngine(repo)
     return _demo_engine
+
+
+def _invoke_copilot(payload: dict) -> dict:
+    """Thin same-origin proxy; deterministic decisions remain in accepted tools."""
+    cif = payload.get("cif")
+    message = payload.get("message")
+    mode = payload.get("mode", "EXPLAIN")
+    if not isinstance(cif, str) or not cif.strip() or not isinstance(message, str):
+        return {"status": "error", "error": {"code": "INVALID_ARGUMENT", "message": "cif and message are required"}}
+    def caller(name: str, args: dict) -> dict:
+        return invoke_tool(name, args, repository=_get_repository())
+    return AgentRuntime(caller, maas_client_from_env()).invoke(mode, cif.strip(), message).to_dict()
 
 
 class ToolHandler(BaseHTTPRequestHandler):
@@ -61,6 +86,17 @@ class ToolHandler(BaseHTTPRequestHandler):
             self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}}); return
         if self.path == "/demo/events":
             self._handle_demo_event(body); return
+        if self.path == "/demo/copilot":
+            self._send(200, _invoke_copilot(body)); return
+        if self.path == "/demo/portfolio":
+            repo = _get_repository()
+            rows = repo.portfolio()
+            self._send(200, {"status": "success", "items": rows[:20], "total": len(rows),
+                             "summary": {"portfolio_size": len(rows),
+                                         "priority_displayed": min(20, len(rows)),
+                                         "call_route_count": sum(1 for row in rows if row["final_route"] == "CALL"),
+                                         "decisions_available": len(rows)},
+                             **repo.meta, "demo_only": True}); return
         if self.path.startswith("/demo/reset/"):
             cif = self.path[len("/demo/reset/"):]
             try:
@@ -75,7 +111,7 @@ class ToolHandler(BaseHTTPRequestHandler):
         tool_name = self.path[len("/tools/"):]
         if tool_name not in PUBLIC_TOOL_ALLOWLIST:
             self._send(404, {"error": {"code": "NOT_FOUND", "message": "Route not found"}}); return
-        result = invoke_tool(tool_name, body, input_directory=Path(os.environ.get("SYNTHETIC_DATA_DIR", "build/synthetic-data")))
+        result = invoke_tool(tool_name, body, repository=_get_repository())
         status = 200 if result["ok"] else 404 if result["error"]["code"] == "NOT_FOUND" else 400
         self._send(status, result)
 

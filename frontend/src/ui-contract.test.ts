@@ -18,4 +18,10 @@ describe('TASK-009 demo UI contract',()=>{
   it('does not bundle credential names or bearer credentials',()=>{
     expect(source).not.toMatch(/API_KEY|CLIENT_SECRET|Authorization|Bearer/);
   });
+  it('exposes the supported scenario explorer without raw decision codes',()=>{
+    for(const label of ['Tạo tình huống thử','Xem quyết định thay đổi thế nào','Đặt lại','Tình huống thử không làm thay đổi dữ liệu khách hàng.','TRƯỚC TÌNH HUỐNG','SAU TÌNH HUỐNG']) expect(source).toContain(label);
+    for(const field of ['inflow_7d','net_cashflow_30d','ptp_state','promise_date','latest_business_outcome']) expect(source).toContain(field);
+    expect(source).toContain("api('/tools/simulate_decision'");
+    expect(source).not.toContain('NBA-300');
+  });
 });

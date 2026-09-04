@@ -11,6 +11,7 @@ from msb_tools.errors import ToolFailure
 from msb_tools.repository import ToolRepository
 from msb_agent.llm import maas_client_from_env
 from msb_agent.runtime import AgentRuntime
+from msb_impact.engine import build_impact_report
 
 _demo_engine: DemoEventEngine | None = None
 _repository: ToolRepository | None = None
@@ -97,6 +98,13 @@ class ToolHandler(BaseHTTPRequestHandler):
                                          "call_route_count": sum(1 for row in rows if row["final_route"] == "CALL"),
                                          "decisions_available": len(rows)},
                              **repo.meta, "demo_only": True}); return
+        if self.path == "/demo/impact":
+            try:
+                report = build_impact_report(_get_repository(), body.get("assumptions", {}))
+                self._send(200, {**report, **_get_repository().meta, "demo_only": True})
+            except ValueError as error:
+                self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": str(error)}})
+            return
         if self.path.startswith("/demo/reset/"):
             cif = self.path[len("/demo/reset/"):]
             try:

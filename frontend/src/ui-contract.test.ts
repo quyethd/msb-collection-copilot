@@ -11,7 +11,7 @@ describe('TASK-009 demo UI contract',()=>{
     expect(source).not.toContain('AEV');
   });
   it('renders customer-facing Vietnamese labels and accepted hero facts',()=>{
-    for(const label of ['Hôm nay cần xử lý ai?','HÀNH ĐỘNG ĐỀ XUẤT HÔM NAY','Vì sao hệ thống đề xuất như vậy?','Lịch sử thay đổi quyết định','Hỏi Copilot về khách hàng này']) expect(source).toContain(label);
+    for(const label of ['Hôm nay cần xử lý ai?','HÀNH ĐỘNG ĐỀ XUẤT HÔM NAY','Vì sao hệ thống đề xuất như vậy?','Lịch sử thay đổi quyết định','Hỏi Trợ lý Thu hồi']) expect(source).toContain(label);
     expect(source).toContain('SYN002846');
     expect(source).toContain('Không thể tải dữ liệu. Vui lòng thử lại.');
   });

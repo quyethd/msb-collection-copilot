@@ -695,7 +695,7 @@ class TestRegressionsPreserved(Task008BTestBase):
 
     def test_agent_version_unchanged(self):
         from msb_agent.models import AGENT_VERSION
-        self.assertEqual(AGENT_VERSION, "TASK-008-V1")
+        self.assertEqual(AGENT_VERSION, "TASK-009B-V1")
 
     def test_simulation_version_unchanged(self):
         from msb_simulation.models import SIMULATION_VERSION

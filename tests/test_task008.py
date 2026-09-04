@@ -393,8 +393,9 @@ class TestRegressionsPreserved(Task008TestBase):
         self.assertEqual(len(TOOL_REGISTRY), 8)
 
     def test_agent_version_updated(self):
+        # Agent presentation version reflects the latest Agent UX task.
         from msb_agent.models import AGENT_VERSION
-        self.assertEqual(AGENT_VERSION, "TASK-008-V1")
+        self.assertEqual(AGENT_VERSION, "TASK-009B-V1")
 
     def test_simulation_version(self):
         self.assertEqual(SIMULATION_VERSION, "TASK-008-V1")

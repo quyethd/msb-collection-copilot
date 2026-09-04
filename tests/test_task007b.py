@@ -132,10 +132,9 @@ class TestPlanMode(Task007BTestBase):
     def test_plan_summary_contains_who_why_what_when_how(self):
         resp = self._invoke("PLAN", "SYN002846")
         summary = resp.summary
-        self.assertIn("SYN002846", summary)
-        self.assertIn("NBA-300", summary)
-        self.assertIn("WAIT_SELF_CURE", summary)
-        self.assertIn("PAYMENT", summary)
+        self.assertIn("Chờ khách hàng tự thanh toán", summary)
+        self.assertIn("quá hạn", summary.lower())
+        self.assertNotIn("WAIT_SELF_CURE", summary)
 
     def test_plan_tools_used(self):
         resp = self._invoke("PLAN", "SYN002846")
@@ -154,7 +153,9 @@ class TestExplainCannotAlterNBA(Task007BTestBase):
 
     def test_explain_distinguishes_deterministic_from_ai(self):
         resp = self._invoke("EXPLAIN", "SYN002846")
-        self.assertIn("DETERMINISTIC DECISION", resp.summary)
+        self.assertIn("Hệ thống đề xuất", resp.summary)
+        self.assertNotIn("DETERMINISTIC DECISION", resp.summary)
+        self.assertNotIn("AI EXPLANATION", resp.summary)
 
     def test_explain_with_adversarial_llm_does_not_change_decision(self):
         resp = self._invoke("EXPLAIN", "SYN002846", runtime=self.adversarial_runtime)

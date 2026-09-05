@@ -87,16 +87,19 @@ class MaasRagAnswerer:
         self._client = client
         self.max_tokens = max_tokens
 
+    def _client_or_default(self):
+        if self._client is not None:
+            return self._client
+        from .maas_client import build_chat_client
+
+        return build_chat_client(self.config)
+
     def answer(self, question: str, chunks: list[KnowledgeChunk]) -> str:
         if not chunks:
             return "Tôi chưa tìm thấy đủ thông tin trong kho kiến thức hiện tại để trả lời chắc chắn."
-        if self._client is None:
-            raise RuntimeError(
-                "MaasRagAnswerer needs a MaaS client; live Qwen RAG requires "
-                "LIVE_GREENNODE_RAG approval"
-            )
+        client = self._client_or_default()
         prompt = _build_prompt(question, chunks)
-        content, model = self._client.complete(
+        content, model = client.complete(
             prompt, max_tokens=self.max_tokens, temperature=0
         )
         if not content:

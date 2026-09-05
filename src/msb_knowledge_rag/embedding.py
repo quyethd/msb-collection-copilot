@@ -8,7 +8,13 @@ import urllib.request
 from hashlib import sha256
 from typing import Protocol
 
-from .config import LOCAL_EMBEDDING_DIM, LOCAL_TOKEN_WEIGHT
+from .config import (
+    LOCAL_EMBEDDING_DIM,
+    LOCAL_MULTILINGUAL_DIM,
+    LOCAL_MULTILINGUAL_MODEL,
+    LOCAL_MULTILINGUAL_NAME,
+    LOCAL_TOKEN_WEIGHT,
+)
 
 _TOKEN_RE = re.compile(r"[^\W_]+(?:[’']\w+)?")
 
@@ -138,6 +144,76 @@ def probe_embedding_availability(
         }
     except EmbeddingUnavailable as error:
         return {"available": False, "status": "NONE_AVAILABLE", "detail": str(error)}
+
+
+class LocalMultilingualEmbedder:
+    """TASK-011H-A local multilingual semantic embedder (fastembed ONNX).
+
+    Runs `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` on CPU.
+    It is a LOCAL adapter — never presented as a GreenNode embedding model — but
+    it is a real multilingual semantic encoder (384 dim, Vietnamese-capable,
+    deterministic). This is the embedding tier used for the live RAG proof until
+    a GreenNode MaaS embeddings endpoint is provisioned (decision order A->B->C:
+    the authorized catalog has none, so LOCAL is the proven fallback).
+    """
+
+    name = LOCAL_MULTILINGUAL_NAME
+
+    def __init__(self, model_name: str = LOCAL_MULTILINGUAL_MODEL):
+        self.model_name = model_name
+        self._model = None
+
+    @staticmethod
+    def available() -> bool:
+        try:
+            import fastembed  # noqa: F401
+        except Exception:
+            return False
+        return True
+
+    def _get_model(self):
+        if self._model is None:
+            if not self.available():
+                raise EmbeddingUnavailable(
+                    "fastembed is not installed; install with `pip install fastembed`"
+                )
+            from fastembed import TextEmbedding
+
+            self._model = TextEmbedding(model_name=self.model_name)
+        return self._model
+
+    def dimension(self) -> int:
+        return LOCAL_MULTILINGUAL_DIM
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        model = self._get_model()
+        return [list(vector) for vector in model.embed(texts)]
+
+
+def build_embedder(config):
+    """Select the embedding adapter from RAG_EMBEDDING_PROVIDER.
+
+    - deterministic: IdfLocalEmbedder (foundation tests, no deps)
+    - local-multilingual / local-e5: LocalMultilingualEmbedder (fastembed)
+    - greennode-maas: MaasEmbeddingClient (only when MaaS embeddings exist)
+    """
+    provider = getattr(config, "embedding_provider", "deterministic")
+    if provider in ("deterministic",):
+        return IdfLocalEmbedder()
+    if provider in ("local-multilingual", "local-e5"):
+        return LocalMultilingualEmbedder()
+    if provider == "greennode-maas":
+        raise EmbeddingUnavailable(
+            "greennode-maas embedding provider requires a provisioned MaaS "
+            "embedding model; the authorized catalog has none (EMBEDDING_MODEL_"
+            "STATUS=NONE_AVAILABLE). Use local-multilingual instead."
+        )
+    raise ValueError(f"unknown embedding provider: {provider!r}")
+
+
+def embedder_is_live(embedder) -> bool:
+    """True only for a real remote-provider embedding tier."""
+    return isinstance(embedder, MaasEmbeddingClient)
 
 
 def default_embedder() -> DeterministicLocalEmbedder:

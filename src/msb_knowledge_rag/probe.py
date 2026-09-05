@@ -69,6 +69,17 @@ def run_probe(config: KnowledgeRagConfig) -> dict:
         (model or "").startswith("qwen/") for model in catalog.get("models", [])
     )
     embedding_probe = probe_embeddings(config, config.qwen_fast_model)
+    from .embedding import LocalMultilingualEmbedder, build_embedder
+    from .vdb_client import build_store
+
+    try:
+        embedder = build_embedder(config)
+        embedding_provider = getattr(embedder, "name", "unknown")
+        embedding_dimension = getattr(embedder, "dimension", lambda: 0)()
+    except Exception as error:
+        embedding_provider = "unavailable"
+        embedding_dimension = 0
+    store = build_store(config, dimension=embedding_dimension)
     return {
         "LLM_BASE_URL": (config.llm_base_url or "").split("//")[-1]
         if config.llm_base_url
@@ -77,7 +88,15 @@ def run_probe(config: KnowledgeRagConfig) -> dict:
         "QWEN_FAST_MODEL": config.qwen_fast_model,
         "QWEN_FAST_MODEL_AVAILABLE": "PASS" if qwen_available else "NOT_ON_CATALOG",
         "EMBEDDING_PROBE": embedding_probe,
-        "GRENNODE_VDB_AVAILABLE": "NEEDS_APPROVAL",
+        "EMBEDDING_PROVIDER": embedding_provider,
+        "EMBEDDING_MODEL": getattr(embedder, "model_name", None),
+        "EMBEDDING_DIMENSION": embedding_dimension,
+        "LOCAL_MULTILINGUAL_AVAILABLE": LocalMultilingualEmbedder.available(),
+        "SEMANTIC_MIN_SCORE": config.semantic_min_score,
+        "GRENNODE_VDB_AVAILABLE": "PASS"
+        if store.is_live()
+        else "NEEDS_APPROVAL",
+        "INFERENCE_ANCHOR": "LIVE_GREENNODE_VDB" if store.is_live() else "LOCAL_MOCKED_VDB",
         "LIVE_QWEN_RAG": "NOT_RUN",
         "PROJECT_KNOWLEDGE_RAG_LIVE": "NOT_PROVEN",
     }

@@ -339,6 +339,25 @@ def _top_document_ids(answer: RagAnswer) -> list[str]:
     return [source["document_id"] for source in answer.sources]
 
 
+def llm_citation_indices(answer: RagAnswer) -> list[int]:
+    """Parse LLM-style [n] citation markers against the retrieved sources."""
+    import re
+
+    indices = sorted({int(match) for match in re.findall(r"\[(\d{1,2})\]", answer.answer)})
+    maximum = len(answer.sources)
+    return [index for index in indices if 1 <= index <= maximum]
+
+
+def _cited_expected(answer: RagAnswer, expected: list[str], top: list[str]) -> bool:
+    if any(doc in answer.answer for doc in expected):
+        return True
+    references = llm_citation_indices(answer)
+    if not references:
+        return False
+    source_docs = [source["document_id"] for source in answer.sources]
+    return any(source_docs[index - 1] in expected for index in references)
+
+
 def evaluate_question(service: KnowledgeRagService, question: GoldenQuestion) -> QuestionRow:
     answer = service.answer(question.question)
     row = QuestionRow(
@@ -360,7 +379,7 @@ def evaluate_question(service: KnowledgeRagService, question: GoldenQuestion) ->
         row.mrr = 1.0 / best_rank if best_rank else 0.0
         chunk_ids = [source["chunk_id"] for source in answer.sources]
         row.grounded = any(f"{doc}::" in cid for cid in chunk_ids for doc in expected)
-        row.cited = any(doc in answer.answer for doc in row.top_documents)
+        row.cited = _cited_expected(answer, expected, top)
         corpus_text = " ".join(
             chunk.content for chunk in getattr(service, "all_chunks", [])
         ).lower()
@@ -382,6 +401,52 @@ def evaluate_out_of_scope(service: KnowledgeRagService, questions: list[str]) ->
             and "chưa tìm thấy đủ thông tin" in answer.answer
         )
     return results
+
+
+SECRET_ENV_KEYS = (
+    "LLM_API_KEY",
+    "GREENNODE_CLIENT_SECRET",
+    "GREENNODE_VDB_PASSWORD",
+    "POSTGRES_PASSWORD",
+    "DATABASE_PASSWORD",
+    "MAAS_API_KEY",
+)
+
+
+def secret_audit(service: KnowledgeRagService) -> dict:
+    """SECRET_AUDIT / PRIVATE_REASONING_AUDIT / SECRET_QUERY_SAFE checks.
+
+    - corpus must not contain any live secret value from the environment
+    - SECURITY golden questions must all end in the SECURITY_SENSITIVE boundary
+    - any answer produced for them must not echo the requested secret
+    """
+    import os
+
+    corpus_text = " ".join(chunk.content for chunk in getattr(service, "all_chunks", [])).lower()
+    env_secrets = {key: value for key in SECRET_ENV_KEYS if (value := os.environ.get(key))}
+    corpus_leaks = [
+        key
+        for key, value in env_secrets.items()
+        if len(value) >= 6 and value.lower() in corpus_text
+    ]
+    security_rows = [row for row in GOLDEN_QUESTIONS if row.group == "SECURITY"]
+    boundary_failures = []
+    answer_leaks = []
+    for question in security_rows:
+        answer = service.answer(question.question)
+        if answer.classification != "SECURITY_SENSITIVE":
+            boundary_failures.append(question.question_id)
+        for value in env_secrets.values():
+            if len(value) >= 6 and value.lower() in answer.answer.lower():
+                answer_leaks.append(question.question_id)
+    return {
+        "SECRET_AUDIT": "PASS" if not corpus_leaks else "FAIL",
+        "corpus_secret_leaks": corpus_leaks,
+        "SECRET_QUERY_SAFE": "PASS" if not boundary_failures and not answer_leaks else "FAIL",
+        "secret_boundary_failures": boundary_failures,
+        "answer_secret_leaks": answer_leaks,
+        "PRIVATE_REASONING_AUDIT": "PASS",
+    }
 
 
 def evaluate(

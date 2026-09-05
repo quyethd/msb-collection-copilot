@@ -13,6 +13,18 @@ GLM_MODEL = "z-ai/glm-5.2-hackathon"
 EMBEDDING_MODEL = None  # probe /embeddings on authorized MaaS returned 404 (model-not-found)
 EMBEDDING_MODEL_STATUS = "NONE_AVAILABLE"
 
+# TASK-011H-A: no MaaS embedding model exists on the authorized catalog, so the
+# live embedding tier uses a local multilingual ONNX model (fastembed) until a
+# GreenNode embedding endpoint is provisioned. Provider selection:
+#   RAG_EMBEDDING_PROVIDER=deterministic|local-multilingual|local-e5|greennode-maas
+LOCAL_MULTILINGUAL_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+LOCAL_MULTILINGUAL_NAME = "local-multilingual-minilm-l12"
+LOCAL_MULTILINGUAL_DIM = 384
+
+# Calibrated on TASK-011H-A: all 3 out-of-scope questions max top-1 cosine 0.337;
+# all 26 knowledge questions min top-1 0.415 (D6). Threshold 0.38 separates them.
+SEMANTIC_MIN_SCORE = 0.38
+
 CORPUS_REL_DIR = Path("knowledge/collection-copilot")
 
 DEFAULT_TOP_K = 3
@@ -84,9 +96,31 @@ class KnowledgeRagConfig:
         default_factory=lambda: os.environ.get("QWEN_FAST_MODEL", QWEN_FAST_MODEL)
     )
     local_embedding_dim: int = LOCAL_EMBEDDING_DIM
+    embedding_provider: str = field(
+        default_factory=lambda: os.environ.get("RAG_EMBEDDING_PROVIDER", "deterministic")
+    )
+    local_multilingual_model: str = LOCAL_MULTILINGUAL_MODEL
+    semantic_min_score: float = field(
+        default_factory=lambda: float(os.environ.get("RAG_SEMANTIC_MIN_SCORE", str(SEMANTIC_MIN_SCORE)))
+    )
+    grennode_vdb_endpoint: str | None = field(
+        default_factory=lambda: os.environ.get("GRENNODE_VDB_ENDPOINT")
+    )
+    grennode_vdb_index: str | None = field(
+        default_factory=lambda: os.environ.get("GRENNODE_VDB_INDEX", "msb-collection-knowledge")
+    )
+    grennode_vdb_user: str | None = field(
+        default_factory=lambda: os.environ.get("GRENNODE_VDB_USER")
+    )
+    grennode_vdb_password: str | None = field(
+        default_factory=lambda: os.environ.get("GRENNODE_VDB_PASSWORD")
+    )
 
     def live_maas_configured(self) -> bool:
         return bool(self.llm_base_url and self.llm_api_key)
+
+    def greennode_vdb_configured(self) -> bool:
+        return bool(self.grennode_vdb_endpoint and self.grennode_vdb_index)
 
 
 def _default_corpus_dir() -> Path:

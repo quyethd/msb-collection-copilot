@@ -43,7 +43,7 @@ AGENTBASE_SECOND_DECISION_FIDELITY=PASS
 AGENTBASE_UNKNOWN_CIF_NO_FABRICATION=PASS
 AGENTBASE_OVERRIDE_GUARDRAIL=PASS
 NO_PRIVATE_REASONING_LEAK=PASS
-COMMIT AUDIT PENDING
+COMMITTED — see `task-results/TASK-011E-COMMIT-AUDIT.md`
 ```
 
 Public NAT TLS, public NBA, public protected-tool auth, public AgentBase gateway auth/data, and post-deployment browser smoke are owner-verified. The owner confirms the frontend loads, browser APIs and timeline work, SYN002846 renders, and the previous demo auth issue is resolved. The browser matrix is OWNER_VERIFIED_PASS. The reported HTTP/2 200 NBA response was application/json with NBA-300 / CALL / WAIT_SELF_CURE / NONE / score 47. The existing AgentBase runtime was then updated in place to version 7 and all required live proof gates passed, as recorded in the TASK-011 evidence file.

@@ -9,8 +9,7 @@ from msb_demo.engine import DemoEventEngine
 from msb_demo.models import DemoEvent
 from msb_tools.errors import ToolFailure
 from msb_tools.repository import ToolRepository
-from msb_agent.llm import maas_client_from_env
-from msb_agent.runtime import AgentRuntime
+from msb_agent.copilot import route_copilot
 from msb_impact.engine import build_impact_report
 
 _demo_engine: DemoEventEngine | None = None
@@ -48,15 +47,10 @@ def _get_demo_engine() -> DemoEventEngine:
 
 
 def _invoke_copilot(payload: dict) -> dict:
-    """Thin same-origin proxy; deterministic decisions remain in accepted tools."""
-    cif = payload.get("cif")
-    message = payload.get("message")
-    mode = payload.get("mode", "EXPLAIN")
-    if not isinstance(cif, str) or not cif.strip() or not isinstance(message, str):
-        return {"status": "error", "error": {"code": "INVALID_ARGUMENT", "message": "cif and message are required"}}
+    """Browser-safe copilot boundary; deterministic decisions remain in accepted tools."""
     def caller(name: str, args: dict) -> dict:
         return invoke_tool(name, args, repository=_get_repository())
-    return AgentRuntime(caller, maas_client_from_env()).invoke(mode, cif.strip(), message).to_dict()
+    return route_copilot(payload, caller)
 
 
 def _demo_cif(payload: dict) -> str | None:

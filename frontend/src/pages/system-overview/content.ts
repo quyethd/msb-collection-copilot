@@ -322,16 +322,7 @@ export const sampleQuestions = {
   title: 'Bạn có thể hỏi Trợ lý điều gì?',
   note: 'Các câu hỏi dưới đây là ví dụ. Từ trang Tổng quan, Trợ lý trả lời dựa trên quyết định đã được xác định và dữ liệu khách hàng hiện có.',
   questions: [
-    'Tại sao hôm nay chưa nên gọi khách hàng này?',
-    'Vì sao khách hàng này được ưu tiên?',
-    'Yếu tố nào đang ảnh hưởng mạnh nhất đến quyết định?',
-    'Khách hàng có cam kết thanh toán nào đang mở không?',
-    'Dòng tiền gần đây của khách hàng thế nào?',
-    'Nếu dòng tiền 7 ngày bằng 0 thì quyết định có thay đổi không?',
-    'Nếu cam kết thanh toán bị phá vỡ thì nên làm gì?',
-    'Khách hàng này đang thuộc CALL hay CBS?',
-    'Tại sao hệ thống đề xuất chờ thay vì liên hệ?',
-    'Điều gì cần thay đổi để khách hàng được ưu tiên cao hơn?',
+    ...assistantQuestionCatalog.map(({ question }) => question),
   ],
 };
 
@@ -403,3 +394,4 @@ export const team = {
     { name: 'Nguyễn Thị Phương', org: 'DC' },
   ],
 };
+import { assistantQuestionCatalog } from '../../assistant-question-catalog';

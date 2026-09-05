@@ -47,4 +47,14 @@ describe('TASK-009 demo UI contract',()=>{
     for(const route of ["api('/demo/customer-360'","api('/demo/next-best-action'","api('/demo/simulate'"]) expect(source).toContain(route);
     for(const route of ["api('/tools/get_customer_360'","api('/tools/get_next_best_action'","api('/tools/simulate_decision'"]) expect(source).not.toContain(route);
   });
+  it('uses one shared question catalog for landing and drawer',()=>{
+    expect(source).toContain("import {assistantQuestionCatalog,commonAssistantQuestions} from './assistant-question-catalog';");
+    expect(source).toContain('Xem thêm 6 câu hỏi');
+    expect(readFileSync(resolve(__dirname,'assistant-question-catalog.ts'),'utf8').match(/question: '/g)).toHaveLength(10);
+    expect(readFileSync(resolve(__dirname,'pages/system-overview/content.ts'),'utf8')).toContain("from '../../assistant-question-catalog'");
+  });
+  it('renders the assistant above page overlays through a portal',()=>{
+    expect(source).toContain('createPortal(content,document.body)');
+    expect(readFileSync(resolve(__dirname,'navigation.css'),'utf8')).toContain('.drawer-backdrop{z-index:1000;');
+  });
 });

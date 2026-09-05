@@ -273,7 +273,16 @@ def _explain_summary(nba: dict[str, Any], llm: LLMClient | None,
 
     if intent == "WHY_NO_CALL":
         summary, sections = _build_why_no_call_sections(nba, facts, None)
-        return summary, None, sections, intent
+        if llm is None:
+            return summary, None, sections, intent
+        prompt = (
+            "Giải thích ngắn gọn bằng tiếng Việt vì sao hệ thống giữ nguyên quyết định "
+            "hiện tại. Chỉ dùng các dữ kiện và đề xuất dưới đây; không thay đổi route, "
+            "treatment, channel hoặc rule_id, không tạo dữ kiện mới.\n"
+            + summary + "\nDữ kiện: " + "; ".join(f"{key}={value}" for key, value in facts.items())
+        )
+        content, model = llm.complete(prompt, max_tokens=200, temperature=0)
+        return content or summary, model, sections, intent
     if intent == "SUMMARY":
         summary, sections = _build_summary_sections(nba, facts, None)
         return summary, None, sections, intent

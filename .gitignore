@@ -11,3 +11,4 @@ __pycache__/
 .greennode.json
 venv/
 *.credentials.json
+src/*.egg-info/

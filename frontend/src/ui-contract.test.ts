@@ -33,7 +33,15 @@ describe('TASK-009 demo UI contract',()=>{
   it('marks only the actual page item active',()=>{
     const pages=readFileSync(resolve(__dirname,'pages.tsx'),'utf8');
     expect(pages).toContain("aria-current={page===target?'page':undefined}");
-    expect(source).toContain("useState<Page>('overview')");
+    expect(source).toContain('useState<Page>(pageFromPath)');
+    expect(source).toContain("window.location.pathname==='/gioi-thieu'");
+  });
+  it('integrates the system overview page state and callbacks',()=>{
+    expect(source).toContain("import {SystemOverviewPage} from './pages/system-overview/SystemOverviewPage';");
+    expect(source).toContain("page==='system-overview'");
+    expect(source).toContain('<SystemOverviewPage onOpenOverview');
+    expect(source).toContain('onOpenCustomer={open}');
+    expect(readFileSync(resolve(__dirname,'pages.tsx'),'utf8')).toContain('secondary-navitem');
   });
   it('uses browser-safe demo routes for protected data',()=>{
     for(const route of ["api('/demo/customer-360'","api('/demo/next-best-action'","api('/demo/simulate'"]) expect(source).toContain(route);

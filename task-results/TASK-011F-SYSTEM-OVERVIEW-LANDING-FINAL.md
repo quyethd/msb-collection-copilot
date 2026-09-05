@@ -1,7 +1,7 @@
 # TASK-011F — SYSTEM OVERVIEW LANDING PAGE (FINAL)
 
 ## Status
-**TASK-011F PASS — READY TO CHERRY-PICK INTO MASTER**
+**TASK-011F PASS — INTEGRATED INTO MASTER**
 
 ```
 IMPLEMENTATION=PASS
@@ -14,14 +14,21 @@ BUILD=PASS
 SECRET_AUDIT=PASS
 CONTENT_TRUTH_AUDIT=PASS
 
-INTEGRATION=WAIT
-DEPLOY=NO
+INTEGRATION=PASS
+DEPLOY=PASS
+MASTER_INTEGRATION=PASS
+FINAL_NAVIGATION=PASS
+GIOI_THIEU_ROUTE=PASS
+TASK011F_TESTS=PASS
+FRONTEND_REGRESSION=PASS
+DOCROOT_DEPLOY=PASS
+DEPLOYED_BUILD_MATCH=PASS
 ```
 
 ## Verification gates
 ```
-TASK011F_TESTS=PASS      # 27/27 (23 system-overview + 4 ui-contract)
-FRONTEND_REGRESSION=PASS # existing frontend tests unaffected
+TASK011F_TESTS=PASS      # system-overview and integration coverage included in the 39-test suite
+FRONTEND_REGRESSION=PASS # 39/39 frontend tests
 BUILD=PASS               # tsc -b && vite build (production)
 SECRET_AUDIT=PASS        # no secrets, no credentials, no reasoning_content, no internal endpoint
 CONTENT_TRUTH_AUDIT=PASS # no false AgentBase pending wording, no future roadmap as shipped,
@@ -31,7 +38,7 @@ CONTENT_TRUTH_AUDIT=PASS # no false AgentBase pending wording, no future roadmap
 ## Scope
 Premium, self-contained "System Overview" landing page for MSB "Trợ lý Thu hồi Nợ — Powered by GreenNode AI".
 Built in the isolated worktree `/opt/msb-collection-copilot-task011f` (branch `task-011f-system-overview`).
-Master was NOT modified. Committed on the branch only; INTEGRATION=WAIT until cherry-pick is approved.
+Integrated into master by cherry-picking source commit `b0906ac`; the page is mounted as the `system-overview` state and `/gioi-thieu`.
 
 ## Files (committed)
 - `frontend/src/pages/system-overview/content.ts` — all page data.
@@ -123,16 +130,23 @@ Tiền vào 7 ngày = 0 and Dòng tiền ròng = 0 (deterministic simulation, un
 - MSB AI Hackathon 2026
 No titles invented for Khánh or Phương.
 
-## Integration instructions (for cherry-pick / master)
-1. Cherry-pick the single TASK-011F commit onto master.
-2. Copy `frontend/src/pages/system-overview/` is included in the commit; mount `<SystemOverviewPage/>`
-   at `/gioi-thieu` (or page state `system-overview`); wire `onOpenCustomer`/`onOpenOverview` to existing routing.
-3. `src/msb_agent_eval/` already exists on master — no backend change needed for the module card.
-4. Re-run `tsc -b && vite build` and the vitest suite on master.
-5. `vite.config.ts` needs no change (this page makes no backend proxy calls).
-6. INTEGRATION=WAIT (do not merge/deploy until cherry-pick is approved); DEPLOY=NO.
+## Master integration
 
-## Constraints respected
-- Work isolated to `/opt/msb-collection-copilot-task011f`. Master not touched.
-- Only TASK-011F files staged and committed. No cherry-pick, no deploy performed.
-- No backend/policy/rule changes. No production runtime changes.
+- `SystemOverviewPage` is mounted as `system-overview` and `/gioi-thieu` is selected through the existing History API page-state mechanism.
+- The secondary navigation entry is separated from the four operational pages and has independent active/hover styling.
+- Landing CTAs reuse the existing overview and customer callbacks; SYN002846 opens the current Customer page.
+- No backend, business-rule, AgentBase runtime, or proxy changes were made.
+
+## Integrated verification
+
+`CONTENT_TRUTH_AUDIT=PASS`, `SECRET_AUDIT=PASS`, `PRIVATE_REASONING_AUDIT=PASS`, and `BUSINESS_SEMANTICS_DRIFT=0` remain true after integration. Frontend Vitest passed 39/39; local rendered System Overview QA passed at 1366×768, 1440×900, and 1920×1080 with no console errors or horizontal overflow. Production build passed and the deployed `index.html` checksum matches the source build with static asset comparison and `www:www` ownership passing.
+
+## Deployment
+
+- Source: `/opt/msb-collection-copilot/frontend/dist`.
+- Destination: `/www/wwwroot/msb-collection-copilot.duckdns.org`.
+- Backup: `/www/wwwroot/msb-collection-copilot.duckdns.org.backup-20260905T053008Z`.
+- Deployed at: `2026-09-05 05:20:37 UTC`.
+- Source/deployed `index.html` SHA-256: `f402b0c30198b91fafb2bf3d98234471bf734f2cc9d40e200d72920f2fa9c9a1` (MATCH).
+- `index.html` and `assets/` ownership: `www:www`; preserved `.htaccess`, `.user.ini`, and `.well-known`.
+- `DOCROOT_DEPLOY=PASS`; `DEPLOYED_BUILD_MATCH=PASS`.

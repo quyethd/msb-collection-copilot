@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {Activity, ArrowRight, BarChart3, LayoutDashboard, MessageCircle, ShieldCheck, UserRound} from 'lucide-react';
 
-export type Page = 'overview' | 'priority' | 'customer' | 'impact';
+export type Page = 'overview' | 'priority' | 'customer' | 'impact' | 'system-overview';
 export const primaryNav = [
   {page:'overview', label:'Tổng quan', icon:LayoutDashboard},
   {page:'priority', label:'Danh sách ưu tiên', icon:Activity},
@@ -14,12 +14,12 @@ const money = (n:number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 export function Sidebar({page,cif,setPage,open,setCopilot}:any) {
   return <aside className="sidebar"><div className="brand"><div className="msb">MSB</div><div><b>Trợ lý Thu hồi Nợ</b><span>Powered by GreenNode AI</span></div></div>
     <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
-    {/* TASK-011F insertion point: optional secondary system navigation, not a dead link. */}
-    <div className="sidebar-secondary-slot"/>
+    <div className="sidebar-secondary" aria-label="Điều hướng hệ thống"><div className="sidebar-separator"/><button className={`navitem secondary-navitem${page==='system-overview'?' active':''}`} aria-current={page==='system-overview'?'page':undefined} onClick={()=>setPage('system-overview')}><ShieldCheck size={18}/><span>Giới thiệu hệ thống</span></button></div>
+    <div className="sidebar-separator assistant-separator"/>
     <button className="assistant-cta" onClick={()=>setCopilot(true)}><MessageCircle size={19}/><span><b>Trợ lý Thu hồi Nợ</b><small>Hỏi về quyết định</small></span><ArrowRight size={15}/></button>
     <div className="side-foot"><ShieldCheck size={15}/> Môi trường demo<br/><span>Dữ liệu mô phỏng</span></div></aside>;
 }
-export function Header({page}:{page:Page}) {return <header><div className="crumb">MSB / {primaryNav.find(x=>x.page===page)?.label}</div><div className="header-right"><span className="live"><i/> Môi trường mô phỏng</span><div className="avatar">HT</div></div></header>}
+export function Header({page}:{page:Page}) {return <header><div className="crumb">MSB / {page==='system-overview'?'Giới thiệu hệ thống':primaryNav.find(x=>x.page===page)?.label}</div><div className="header-right"><span className="live"><i/> Môi trường mô phỏng</span><div className="avatar">HT</div></div></header>}
 export function chartCounts(rows:any[], kind:'action'|'route') {
   const counts:Record<string,number> = {};
   for(const row of rows) {

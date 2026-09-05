@@ -9,8 +9,7 @@ html,body,#root,.app,main{overflow-x:visible}
 .sidebar .navitem:not(.active):hover{background:#fff8f3;color:#53657b;font-weight:500}
 .sidebar .navitem.active,.sidebar .navitem.active:hover{background:#ffeadb;color:#c8550e;font-weight:700;box-shadow:none}
 button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid #db6b26;outline-offset:3px}
-.sidebar-secondary-slot:empty{display:none}
-.sidebar-secondary-slot:not(:empty){border-top:1px solid #e4e8ef;margin-top:20px;padding-top:16px}
+.sidebar-secondary{display:grid;gap:4px;margin-top:18px}.sidebar-separator{height:1px;background:#e4e8ef;margin:0 8px 8px}.secondary-navitem.active,.secondary-navitem.active:hover{background:#fff2e9;color:#c8550e;font-weight:700;box-shadow:none}.assistant-separator{margin-top:20px;margin-bottom:0}
 .assistant-cta{display:flex;align-items:center;gap:9px;text-align:left;margin-top:28px;padding:15px 10px;border:1px solid #d8e3ee;border-radius:8px;background:#f3f7fb;color:#294663;width:100%}
 .assistant-cta:hover{background:#eaf1f8;border-color:#b8cada}
 .assistant-cta>svg{flex:none}.assistant-cta span{flex:1;min-width:0}.assistant-cta b,.assistant-cta small{display:block;white-space:nowrap}.assistant-cta b{font-size:12px}.assistant-cta small{font-size:11px;margin-top:5px;color:#647389}

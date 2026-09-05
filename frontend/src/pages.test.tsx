@@ -17,8 +17,16 @@ describe('Final primary navigation',()=>{
     expect(node.querySelectorAll('nav [aria-current="page"]')).toHaveLength(1);
     expect(node.querySelector('nav [aria-current="page"]')?.textContent).toBe(primaryNav.find(x=>x.page===page)?.label);
     expect(node.querySelector('.assistant-cta.active')).toBeNull();
-    expect(node.querySelector('.sidebar-secondary-slot')?.children).toHaveLength(0);
+    expect(node.querySelectorAll('.sidebar-secondary [aria-current="page"]')).toHaveLength(0);
+    expect(node.querySelector('.sidebar-secondary')?.textContent).toContain('Giới thiệu hệ thống');
     for(const text of ['Cảnh báo sớm','Cam kết thanh toán','Lịch sử liên hệ','Giới thiệu hệ thống']) expect(node.querySelector('nav')?.textContent).not.toContain(text);
+  });
+  it('system overview is the only active secondary page and assistant is separate',()=>{
+    const html=renderToStaticMarkup(<Sidebar page="system-overview"/>);
+    const node=document.createElement('div');node.innerHTML=html;
+    expect(node.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    expect(node.querySelector('[aria-current="page"]')?.textContent).toBe('Giới thiệu hệ thống');
+    expect(node.querySelector('.assistant-cta.active')).toBeNull();
   });
   it('overview has two actual-data charts and no priority table',()=>{
     const html=renderToStaticMarkup(<Overview portfolio={rows} summary={{}} open={()=>{}} loading={false}/>);

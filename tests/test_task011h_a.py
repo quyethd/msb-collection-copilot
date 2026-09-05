@@ -294,3 +294,211 @@ def test_maas_answerer_uses_only_prompt_content_and_citations():
     assert len(client.calls) == 1
     assert "04-call-cbs-routing" in client.calls[0]
     assert "reasoning_content" not in text
+
+
+# --- live GreenNode vDB OpenSearch contract (against a mock HTTP endpoint) ---
+
+
+import base64
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from msb_knowledge_rag.models import KnowledgeChunk
+from msb_knowledge_rag.vdb_client import cosine_similarity
+
+
+class _MockOpenSearchHandler(BaseHTTPRequestHandler):
+    server: "_MockOpenSearchServer"
+
+    def log_message(self, *args):
+        pass
+
+    def _send(self, code: int, payload: dict):
+        body = json.dumps(payload).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_PUT(self):
+        self.server.requests.append(("PUT", self.path, self.headers, None))
+        if self.server.fail_put:
+            self._send(500, {"error": "server boom"})
+            return
+        self.server.mapping_request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        self._send(200, {"acknowledged": True})
+
+    def do_POST(self):
+        size = int(self.headers["Content-Length"])
+        raw = self.rfile.read(size)
+        self.server.requests.append(("POST", self.path, self.headers, raw))
+        if self.path.endswith("/_bulk"):
+            docs = []
+            lines = raw.decode("utf-8").splitlines()
+            for action_line, doc_line in zip(lines[0::2], lines[1::2]):
+                action = json.loads(action_line)
+                doc = json.loads(doc_line)
+                self.server.docs[action["index"]["_id"]] = doc
+                docs.append(doc)
+            decoded = base64.b64decode(self.headers["Authorization"].split(" ", 1)[1]).decode()
+            self.server.last_auth = decoded
+            items = [{"index": {"status": 201}} for _ in docs]
+            self._send(200, {"items": items})
+        elif self.path.endswith("/_search"):
+            body = json.loads(raw)
+            vector = body["query"]["knn"]["embedding"]["vector"]
+            size = body.get("size", 10)
+            scored = [
+                (cosine_similarity(vector, doc.get("embedding") or []), doc)
+                for doc in self.server.docs.values()
+            ]
+            scored.sort(key=lambda item: (item[0], item[1].get("chunk_id", "")), reverse=True)
+            hits = [{"_source": doc} for _, doc in scored[:size]]
+            self._send(200, {"hits": {"hits": hits}})
+        else:
+            self._send(500, {"error": "unsupported"})
+
+    def do_GET(self):
+        self.server.requests.append(("GET", self.path, self.headers, None))
+        if self.path.endswith("/_count"):
+            self._send(200, {"count": len(self.server.docs)})
+        else:
+            self._send(500, {"error": "unsupported"})
+
+
+class _MockOpenSearchServer:
+    def __init__(self, fail_put: bool = False):
+        self.docs: dict[str, dict] = {}
+        self.requests: list = []
+        self.mapping_request = None
+        self.fail_put = fail_put
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), _MockOpenSearchHandler)
+        self.httpd.docs = self.docs
+        self.httpd.requests = self.requests
+        self.httpd.last_auth = None
+        self.httpd.mapping_request = _Sentinel()
+        self.httpd.fail_put = self.fail_put
+        self._worker = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self._worker.start()
+
+    @property
+    def last_auth(self) -> str:
+        return self.httpd.last_auth
+
+    @property
+    def mapping(self) -> dict:
+        value = self.httpd.mapping_request
+        return None if isinstance(value, _Sentinel) else value
+
+    @property
+    def url(self) -> str:
+        return f"http://127.0.0.1:{self.httpd.server_address[1]}"
+
+    def close(self):
+        self.httpd.shutdown()
+
+
+class _Sentinel:
+    pass
+
+
+def _chunk(chunk_key: str, document_id: str = "04-call-cbs-routing") -> KnowledgeChunk:
+    return KnowledgeChunk(
+        chunk_id=chunk_key,
+        document_id=document_id,
+        title="Routing",
+        section="s",
+        topic="ROUTING",
+        audience="ALL",
+        knowledge_version="TASK-011H-V1",
+        source_commit="c",
+        source_type="official",
+        implementation_status="IMPLEMENTED",
+        heading="h",
+        order=1,
+        content="Nội dung routing quyết định nghiệp vụ.",
+    )
+
+
+def _live_config(url: str) -> KnowledgeRagConfig:
+    config = KnowledgeRagConfig()
+    config.grennode_vdb_endpoint = url
+    config.grennode_vdb_index = "msb-collection-knowledge"
+    config.grennode_vdb_user = "admin"
+    config.grennode_vdb_password = "s3cr3t-pw-do-not-leak"
+    return config
+
+
+def test_vdb_opensearch_ingest_uses_knn_mapping_and_idempotent_ids():
+    server = _MockOpenSearchServer()
+    try:
+        client = GreennodeVdbOpenSearchClient(_live_config(server.url), dimension=384)
+        assert client.is_live() is True
+        count = client.upsert([(_chunk("d1::k1"), [0.1] * 384), (_chunk("d1::k2"), [0.2] * 384)])
+        assert count == 2
+        assert server.last_auth == "admin:s3cr3t-pw-do-not-leak"
+        mapping = server.mapping
+        assert mapping["mappings"]["properties"]["embedding"]["type"] == "knn_vector"
+        assert mapping["mappings"]["properties"]["embedding"]["dimension"] == 384
+        method = mapping["mappings"]["properties"]["embedding"]["method"]
+        assert method["name"] == "hnsw" and method["space_type"] == "cosinesimil"
+        bulk = [raw for method, path, _, raw in server.requests if path.endswith("/_bulk")][-1]
+        action_line = json.loads(bulk.decode().splitlines()[0])
+        assert action_line["index"]["_id"] == "d1::k1"
+        assert set(server.docs) == {"d1::k1", "d1::k2"}
+    finally:
+        server.close()
+
+
+def test_vdb_opensearch_search_recomputes_cosine_and_returns_retrieval_hits():
+    server = _MockOpenSearchServer()
+    try:
+        client = GreennodeVdbOpenSearchClient(_live_config(server.url), dimension=4)
+        client.upsert(
+            [
+                (_chunk("a::1", "04-call-cbs-routing"), [1.0, 0.0, 0.0, 0.0]),
+                (_chunk("b::1", "03-problem-and-value-proposition"), [0.0, 1.0, 0.0, 0.0]),
+                (_chunk("c::1", "20-trust-and-safety"), [0.0, 0.0, 1.0, 0.0]),
+            ]
+        )
+        hits = client.search([0.6, 0.8, 0.0, 0.0], top_k=2)
+        assert [hit.chunk.chunk_id for hit in hits] == ["b::1", "a::1"]
+        assert hits[0].score > hits[1].score
+        body = json.loads(
+            [raw for method, path, _, raw in server.requests if path.endswith("/_search")][-1]
+        )
+        assert body["query"]["knn"]["embedding"]["vector"] == [0.6, 0.8, 0.0, 0.0]
+        assert body["query"]["knn"]["embedding"]["k"] > body["size"]
+    finally:
+        server.close()
+
+
+def test_vdb_opensearch_count_and_unprovisioned_raises():
+    server = _MockOpenSearchServer()
+    try:
+        client = GreennodeVdbOpenSearchClient(_live_config(server.url), dimension=4)
+        client.upsert([(_chunk("d1::k1"), [1.0, 0.0, 0.0, 0.0])])
+        assert client.count() == 1
+    finally:
+        server.close()
+    blank = KnowledgeRagConfig()
+    unprovisioned = GreennodeVdbOpenSearchClient(blank, dimension=4)
+    assert unprovisioned.is_live() is False
+    with pytest.raises(VdbUnavailable):
+        unprovisioned.upsert([(_chunk("d1::k1"), [1.0, 0.0, 0.0, 0.0])])
+    assert isinstance(build_store(blank, dimension=4), InProcessMockVectorStore)
+
+
+def test_vdb_opensearch_error_never_leaks_password():
+    server = _MockOpenSearchServer(fail_put=True)
+    try:
+        client = GreennodeVdbOpenSearchClient(_live_config(server.url), dimension=4)
+        with pytest.raises(VdbUnavailable) as excinfo:
+            client.upsert([(_chunk("d1::k1"), [1.0, 0.0, 0.0, 0.0])])
+        message = str(excinfo.value)
+        assert "s3cr3t-pw-do-not-leak" not in message
+        assert "admin" not in message
+    finally:
+        server.close()

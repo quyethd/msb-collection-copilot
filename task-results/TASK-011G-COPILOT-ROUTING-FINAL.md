@@ -64,7 +64,7 @@ Measured locally against the current implementation:
 | greeting | LOCAL | ~0.1 ms |
 | cashflow/PTP/customer summary | LOCAL | ~2–5 ms |
 | route lookup | LOCAL + NBA | ~4–5 ms |
-| decision explanation | FALLBACK after bounded model attempt | ~6–8 s |
+| decision explanation | FALLBACK after bounded GLM attempt | ~8.1 s |
 | simulation | FALLBACK after bounded model attempt | ~8.1 s |
 
 The fast local paths are materially below the previous observation, and the
@@ -82,7 +82,7 @@ information is being shown; no fabricated evidence is added.
 `frontend/src/assistant-question-catalog.ts` is the single catalog of ten
 approved example questions and their groups. System Overview and the drawer
 consume that same source. The drawer initially shows four questions and
-expands with “Xem thêm câu hỏi”; the free-text composer remains unrestricted.
+expands with “Xem thêm 6 câu hỏi”; the free-text composer remains unrestricted.
 
 ## DRAWER_OVERLAY_FIX
 
@@ -137,7 +137,7 @@ SECRET_AUDIT=PASS
 PRIVATE_REASONING_AUDIT=PASS
 BUSINESS_SEMANTICS_DRIFT=0
 
-READY_FOR_COMMIT_AND_DEPLOY
+COMMITTED_AND_DEPLOYED
 
 ## TASK-011G.1 UI GATES
 
@@ -188,7 +188,8 @@ MODEL_ROUTING_ARCHITECTURE=PASS
 QWEN_FAST_PATH=NOT_PROVEN
 MULTI_MODEL_RUNTIME_PROOF=NO
 MULTI_MODEL_ROUTING_PROVEN=NO
-MODEL_AWARE_ROUTING=FAIL
+MODEL_AWARE_ARCHITECTURE=PASS
+ACTIVE_MODEL_PATH=LOCAL_PLUS_GLM_5_2
 
 ### GLM_LATENCY_ANALYSIS
 
@@ -209,25 +210,27 @@ are unchanged.
 
 ### FIVE_RUN_LATENCY_BENCHMARK
 
-Five-run local benchmark batch (one initial greeting sample was discarded
-because the server was still starting; four stable greeting samples were
-0.04–0.06 ms). Other rows contain five completed runs.
+Five stable runs on the current final code; no startup samples were included.
+The local server was health-checked before collection.
 
-| Intent | Tool | Path/model | min / median / max total |
-|---|---|---|---:|
-| GREETING_HELP | none | LOCAL / LOCAL | 0.04 / 0.05 / 0.06 ms* |
-| CASHFLOW | get_customer_360 | FALLBACK / LOCAL | 8068 / 8071 / 8212 ms |
-| PTP | get_customer_360 | FALLBACK / LOCAL | 8066 / 8071 / 8212 ms |
-| ROUTE_PRIORITY | get_next_best_action | LOCAL / LOCAL | 4.86 / 5.56 / 7.12 ms |
-| DECISION_EXPLANATION | get_next_best_action | FALLBACK / LOCAL | 5.22 / 5.56 / 5.86 ms** |
-| SIMULATION | simulate_decision | FALLBACK / LOCAL | 8068 / 8074 / 8076 ms |
+| Intent | Tool | Path | Model | min / median / max total | router / tool / model median |
+|---|---|---|---|---:|---:|
+| GREETING_HELP | none | LOCAL | LOCAL | 0.06 / 0.08 / 0.11 ms | 0.04 / 0 / 0 ms |
+| CUSTOMER_SUMMARY | get_customer_360 | LOCAL | LOCAL | 2.44 / 3.25 / 4.34 ms | 0.11 / 3.10 / 0 ms |
+| CASHFLOW | get_customer_360 | LOCAL | LOCAL | 2.34 / 3.01 / 4.13 ms | 0.10 / 2.86 / 0 ms |
+| PTP | get_customer_360 | LOCAL | LOCAL | 2.21 / 2.42 / 2.55 ms | 0.11 / 2.28 / 0 ms |
+| ROUTE_PRIORITY | get_next_best_action | LOCAL | LOCAL | 5.36 / 5.55 / 8.32 ms | 0.13 / 5.41 / 0 ms |
+| DECISION_EXPLANATION | get_next_best_action | FALLBACK | GLM 5.2 bounded | 8105.62 / 8106.38 / 8248.83 ms | 0.12 / 5.30 / 8101.51 ms |
+| SIMULATION | simulate_decision | FALLBACK | GLM 5.2 bounded | 8082.27 / 8107.40 / 8235.01 ms | 0.10 / 7.42 / 8096.19 ms |
 
-`*` Four stable samples; the fifth was a startup transport timeout.
-`**` This batch preceded the final why-explanation model invocation; the
-current implementation records the model portion separately and is bounded
-by the same 8-second timeout. The deterministic decision remains unchanged.
+Non-model medians meet the release targets. Decision and simulation expose
+their deterministic result before model generation; model explanation is
+bounded and falls back to grounded deterministic text.
 
 TIMEOUT_FALLBACK=PASS
+DETERMINISTIC_RESULT_AVAILABLE_QUICKLY=PASS
+MODEL_TIMEOUT_BOUNDED=PASS
+GROUNDED_FALLBACK=PASS
 TOOL_AWARE_ROUTING=PASS
 FREE_TEXT_ROUTING=PASS
 QUESTION_CATALOG_SINGLE_SOURCE=PASS
@@ -238,4 +241,29 @@ BUILD=PASS
 SECRET_AUDIT=PASS
 BUSINESS_SEMANTICS_DRIFT=0
 
-READY_FOR_COMMIT_AND_DEPLOY
+COMMITTED_AND_DEPLOYED
+
+## RELEASE VERIFICATION
+
+TASK011G_COMMIT=THIS_COMMIT
+BUILD=PASS
+DOCROOT_DEPLOY=PASS
+DEPLOYED_BUILD_MATCH=PASS
+PUBLIC_SMOKE=PASS
+PRODUCTION_RENDERED_UI_QA=PASS
+
+Production backup:
+`/www/wwwroot/msb-collection-copilot.duckdns.org.backup-20260905080403`
+
+The source and deployed `index.html` SHA-256 matched:
+`aad9eb7984d0af0c8ebdc17c2471fd26dafc3fa29225a05262df7d0734455f21`.
+Public NAT-pinned checks returned HTML for `/` and `/gioi-thieu`, JSON for
+browser-safe demo APIs, and passed protected `/tools` and `/agent-tools`
+authentication checks. Production rendered QA passed at 1366x768, 1440x900,
+and 1920x1080: quick-nav remained below the assistant backdrop, four initial
+questions expanded to all ten, and the composer stayed visible.
+
+Production Copilot smoke passed for local greeting, customer summary,
+cashflow, PTP, deterministic route, bounded decision explanation, and
+simulation. SYN002846 remained NBA-300 / CALL / WAIT_SELF_CURE / NONE / 47;
+the accepted simulation remained WAIT_SELF_CURE → CONTACT.

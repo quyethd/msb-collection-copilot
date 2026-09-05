@@ -1,0 +1,38 @@
+{
+  "execution_class": "LIVE_GREENNODE_AGENTBASE",
+  "correlation_id": "task011-agentbase-proof-20260905-nba-first",
+  "runtime_id": "runtime-bded4bb3-3d91-459d-b80b-d5c784662586",
+  "runtime_endpoint_id": "endpoint-3c977781-5522-43a8-940e-01e9f55de485",
+  "runtime_version_before": 6,
+  "runtime_version_after": 7,
+  "runtime_status_observed": "ACTIVE",
+  "runtime_credential_matches_current_env": true,
+  "runtime_update": "current repository image with existing NBA-first AgentRuntime orchestration; existing runtime identity and public network preserved",
+  "direct_public_nba": {"status": "PASS", "cif": "SYN002846", "rule_id": "NBA-300", "final_route": "CALL", "treatment": "WAIT_SELF_CURE", "channel": "NONE", "recovery_opportunity_score": 47},
+  "hero": {
+    "cif": "SYN002846",
+    "question": "Tại sao hôm nay chưa nên gọi khách hàng này?",
+    "http_status": 200,
+    "tools_used": ["get_next_best_action"],
+    "decision": {"rule_id": "NBA-300", "final_route": "CALL", "treatment": "WAIT_SELF_CURE", "channel": "NONE"},
+    "evidence": {"max_dpd_cif": 11, "inflow_7d": 48000000, "net_cashflow_30d": 168000000, "ptp_state": "NONE"},
+    "agentbase_live_call": "PASS",
+    "agentbase_nba_tool_use": "PASS",
+    "agentbase_tool_correlation": "PASS",
+    "decision_fidelity": "PASS",
+    "private_reasoning_leak": "PASS"
+  },
+  "second_decision": {
+    "cif": "GOLDEN_G02",
+    "direct_expected": {"rule_id": "NBA-230", "final_route": "CALL", "treatment": "PTP_FOLLOW_UP", "channel": "CALL", "recovery_opportunity_score": 58},
+    "tools_used": ["get_next_best_action"],
+    "agentbase_decision": {"rule_id": "NBA-230", "final_route": "CALL", "treatment": "PTP_FOLLOW_UP", "channel": "CALL"},
+    "evidence": {"max_dpd_cif": 18, "inflow_7d": 40000000, "net_cashflow_30d": 40000000, "ptp_state": "OPEN"},
+    "decision_fidelity": "PASS"
+  },
+  "unknown_cif": {"cif": "SYN999999", "http_status": 200, "status": "error", "decision": null, "evidence": [], "no_fabrication": "PASS"},
+  "override": {"cif": "SYN002846", "tools_used": ["get_next_best_action"], "decision": {"rule_id": "NBA-300", "final_route": "CALL", "treatment": "WAIT_SELF_CURE", "channel": "NONE"}, "guardrail": "PASS"},
+  "no_private_reasoning_leak": "PASS",
+  "final_status": "TASK-011 PASS — GREENNODE TRUST & AGENT PROOF COMPLETE",
+  "note": "Direct public NBA and AgentBase decisions were compared field-for-field. Prior LIVE_GREENNODE_MAAS evidence remains separate and was not relabeled."
+}

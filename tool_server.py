@@ -1,6 +1,6 @@
 """Authenticated local HTTP adapter for the accepted TASK-006 tool layer + TASK-008B demo routes."""
 from __future__ import annotations
-import hmac, json, os, threading
+import hmac, json, os, re, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from msb_tools.registry import invoke_tool
@@ -16,6 +16,18 @@ from msb_impact.engine import build_impact_report
 _demo_engine: DemoEventEngine | None = None
 _repository: ToolRepository | None = None
 _repository_lock = threading.Lock()
+_DEMO_CIF = re.compile(r"(?:SYN\d{6}|GOLDEN_G\d{2})\Z")
+_BROWSER_POST_ROUTES = frozenset({
+    "/demo/customer-360", "/demo/next-best-action", "/demo/simulate",
+    "/demo/events", "/demo/copilot", "/demo/portfolio", "/demo/impact",
+})
+
+
+def is_browser_safe_demo_route(method: str, path: str) -> bool:
+    if method == "POST" and path in _BROWSER_POST_ROUTES:
+        return True
+    prefix = "/demo/timeline/" if method == "GET" else "/demo/reset/" if method == "POST" else None
+    return bool(prefix and path.startswith(prefix) and re.fullmatch(r"[^/?#]+", path[len(prefix):]))
 
 
 def _get_repository() -> ToolRepository:
@@ -47,6 +59,17 @@ def _invoke_copilot(payload: dict) -> dict:
     return AgentRuntime(caller, maas_client_from_env()).invoke(mode, cif.strip(), message).to_dict()
 
 
+def _demo_cif(payload: dict) -> str | None:
+    cif = payload.get("cif")
+    if isinstance(cif, str) and _DEMO_CIF.fullmatch(cif.strip()):
+        return cif.strip()
+    return None
+
+
+def _invalid_demo_cif() -> dict:
+    return {"error": {"code": "INVALID_ARGUMENT", "message": "A synthetic demo CIF is required"}}
+
+
 class ToolHandler(BaseHTTPRequestHandler):
     server_version = "MSBCollectionTool/0.4"
 
@@ -65,11 +88,32 @@ class ToolHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _validate_demo_request(self, body: dict) -> bool:
+        if self.path not in {"/demo/portfolio", "/demo/impact"}:
+            payload = {"cif": self.path.rsplit("/", 1)[1]} if self.path.startswith(("/demo/timeline/", "/demo/reset/")) else body
+            cif = _demo_cif(payload)
+            if cif is None:
+                self._send(400, _invalid_demo_cif()); return False
+            if "cif" in body:
+                body["cif"] = cif
+        # Aggregate demo endpoints must also fail closed for a non-demo repository.
+        try:
+            repo = _get_repository()
+            if any(not _DEMO_CIF.fullmatch(cif) for cif in repo.cifs):
+                self._send(403, {"error": {"code": "DEMO_ONLY", "message": "Synthetic demo data required"}})
+                return False
+        except ToolFailure:
+            self._send(503, {"error": {"code": "UNAVAILABLE", "message": "Demo data unavailable"}})
+            return False
+        return True
+
     def do_GET(self) -> None:
         if self.path == "/health":
             self._send(200, {"status": "healthy"}); return
+        browser_demo = is_browser_safe_demo_route("GET", self.path)
+        if not browser_demo and not self._require_auth(): return
+        if browser_demo and not self._validate_demo_request({}): return
         if self.path.startswith("/demo/timeline/"):
-            if not self._require_auth(): return
             cif = self.path[len("/demo/timeline/"):]
             try:
                 entries = _get_demo_engine().get_timeline(cif)
@@ -81,10 +125,30 @@ class ToolHandler(BaseHTTPRequestHandler):
         self._send(404, {"error": {"code": "NOT_FOUND", "message": "Route not found"}})
 
     def do_POST(self) -> None:
-        if not self._require_auth(): return
+        browser_demo = is_browser_safe_demo_route("POST", self.path)
+        if not browser_demo and not self._require_auth(): return
         try: body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
         except (ValueError, json.JSONDecodeError):
             self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}}); return
+        if not isinstance(body, dict):
+            self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}}); return
+        if browser_demo and not self._validate_demo_request(body): return
+        if self.path in {"/demo/customer-360", "/demo/next-best-action"}:
+            cif = _demo_cif(body)
+            if cif is None:
+                self._send(400, _invalid_demo_cif()); return
+            tool_name = "get_customer_360" if self.path.endswith("customer-360") else "get_next_best_action"
+            result = invoke_tool(tool_name, {"cif": cif}, repository=_get_repository())
+            status = 200 if result["ok"] else 404 if result["error"]["code"] == "NOT_FOUND" else 400
+            self._send(status, result); return
+        if self.path == "/demo/simulate":
+            cif = _demo_cif(body)
+            changes = body.get("changes", {})
+            if cif is None or not isinstance(changes, dict):
+                self._send(400, _invalid_demo_cif()); return
+            result = invoke_tool("simulate_decision", {"cif": cif, "changes": changes}, repository=_get_repository())
+            status = 200 if result["ok"] else 404 if result["error"]["code"] == "NOT_FOUND" else 400
+            self._send(status, result); return
         if self.path == "/demo/events":
             self._handle_demo_event(body); return
         if self.path == "/demo/copilot":

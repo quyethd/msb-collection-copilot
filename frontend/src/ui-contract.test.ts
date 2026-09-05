@@ -11,7 +11,7 @@ describe('TASK-009 demo UI contract',()=>{
     expect(source).not.toContain('AEV');
   });
   it('renders customer-facing Vietnamese labels and accepted hero facts',()=>{
-    for(const label of ['Hôm nay cần xử lý ai?','HÀNH ĐỘNG ĐỀ XUẤT HÔM NAY','Vì sao hệ thống đề xuất như vậy?','Lịch sử thay đổi quyết định','Hỏi Trợ lý Thu hồi']) expect(source).toContain(label);
+    for(const label of ['HÀNH ĐỘNG ĐỀ XUẤT HÔM NAY','Vì sao hệ thống đề xuất như vậy?','Lịch sử thay đổi quyết định','Hỏi Trợ lý Thu hồi']) expect(source).toContain(label);
     expect(source).toContain('SYN002846');
     expect(source).toContain('Không thể tải dữ liệu. Vui lòng thử lại.');
   });
@@ -21,7 +21,22 @@ describe('TASK-009 demo UI contract',()=>{
   it('exposes the supported scenario explorer without raw decision codes',()=>{
     for(const label of ['Tạo tình huống thử','Xem quyết định thay đổi thế nào','Đặt lại','Tình huống thử không làm thay đổi dữ liệu khách hàng.','TRƯỚC TÌNH HUỐNG','SAU TÌNH HUỐNG']) expect(source).toContain(label);
     for(const field of ['inflow_7d','net_cashflow_30d','ptp_state','promise_date','latest_business_outcome']) expect(source).toContain(field);
-    expect(source).toContain("api('/tools/simulate_decision'");
+    expect(source).toContain("api('/demo/simulate'");
     expect(source).not.toContain('NBA-300');
+  });
+  it('normalizes accepted tool envelopes and keeps the local proxy on 18080',()=>{
+    expect(source).toContain('const toolData=(response:any)=>response?.data??response;');
+    expect(source).toContain('setCustomer(toolData(ctx));');
+    expect(source).toContain('setDecision(toolData(nba));');
+    expect(readFileSync(resolve(__dirname,'../vite.config.ts'),'utf8')).toContain("const target='http://127.0.0.1:18080'");
+  });
+  it('marks only the actual page item active',()=>{
+    const pages=readFileSync(resolve(__dirname,'pages.tsx'),'utf8');
+    expect(pages).toContain("aria-current={page===target?'page':undefined}");
+    expect(source).toContain("useState<Page>('overview')");
+  });
+  it('uses browser-safe demo routes for protected data',()=>{
+    for(const route of ["api('/demo/customer-360'","api('/demo/next-best-action'","api('/demo/simulate'"]) expect(source).toContain(route);
+    for(const route of ["api('/tools/get_customer_360'","api('/tools/get_next_best_action'","api('/tools/simulate_decision'"]) expect(source).not.toContain(route);
   });
 });

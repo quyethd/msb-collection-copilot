@@ -40,8 +40,7 @@ describe('TASK-011F system overview page', () => {
     expect(html).toContain(brand.bank);
     expect(html).toContain(brand.product);
     expect(html).toContain(brand.poweredBy);
-    expect(html).toContain('Trợ lý quyết định thu hồi nợ');
-    expect(html).toContain('cho tác nghiệp CALL/CBS');
+    expect(html).toContain('Trợ lý Thu hồi Nợ cho cán bộ và đội ngũ thu hồi nợ');
     expect(html).toContain('Không tìm khách hàng nợ nhiều nhất.');
     expect(html).toContain('Tìm cơ hội thu hồi tốt nhất tiếp theo.');
     for (const chip of ['Đúng khách hàng', 'Đúng hành động', 'Đúng thời điểm', 'Lý do rõ ràng']) {
@@ -68,13 +67,13 @@ describe('TASK-011F system overview page', () => {
   it('explains the four core pains', () => {
     expect(html).toContain('Từ danh sách nợ đến quyết định hành động');
     expect(pains).toHaveLength(4);
-    expect(html).toContain('DPD cao');
+    expect(html).toContain('Quá hạn cao');
     expect(html).toContain('Dư nợ cao');
     expect(html).toContain('cơ hội thu hồi tốt nhất');
     expect(html).toContain('cần gọi ngay');
     expect(html).toContain('Thuộc tuyến CALL không có nghĩa hôm nay nhất thiết phải gọi.');
     expect(html).toContain('Tại sao hệ thống lại đề xuất hành động này?');
-    for (const signal of ['DPD', 'Dòng tiền', 'Cam kết thanh toán', 'Tuyến CALL / CBS']) {
+    for (const signal of ['Số ngày quá hạn (DPD)', 'Dòng tiền', 'Cam kết thanh toán', 'Tuyến CALL / CBS']) {
       expect(html).toContain(signal);
     }
   });
@@ -84,8 +83,8 @@ describe('TASK-011F system overview page', () => {
     expect(benefitCards.some((c) => c.title.includes('CBS'))).toBe(true);
     expect(html).toContain('Tác nghiệp CALL');
     expect(html).toContain('Tác nghiệp CBS');
-    expect(html).toContain('Team Leader / Collection Manager');
-    expect(html).toContain('Architecture / Technology');
+    expect(html).toContain('Trưởng nhóm / Quản lý thu hồi');
+    expect(html).toContain('Kiến trúc / Công nghệ');
   });
 
   it('maps WHO / WHY / WHAT / WHEN to actual system stages', () => {
@@ -94,10 +93,10 @@ describe('TASK-011F system overview page', () => {
     expect(html).toContain('WHAT');
     expect(html).toContain('WHEN');
     expect(steps).toHaveLength(4);
-    expect(html).toContain('Recovery Opportunity + Ranking');
-    expect(html).toContain('Evidence + GreenNode Agent');
-    expect(html).toContain('Next Best Action');
-    expect(html).toContain('Cashflow + PTP + callback + suppression + next action');
+    expect(html).toContain('Cơ hội thu hồi (Recovery Opportunity) + Xếp hạng');
+    expect(html).toContain('Bằng chứng + GreenNode Agent');
+    expect(html).toContain('Hành động đề xuất tiếp theo (Next Best Action)');
+    expect(html).toContain('Dòng tiền + Cam kết thanh toán + lịch liên hệ + hành động tiếp theo');
   });
 
   it('shows the accepted SYN002846 hero facts', () => {
@@ -125,9 +124,9 @@ describe('TASK-011F system overview page', () => {
 
   it('keeps decision responsibility separated: deterministic core vs GreenNode Agent', () => {
     expect(html).toContain(pipeline.coreStatementTitle);
-    expect(html).toContain('là nguồn quyết định nghiệp vụ.');
+    expect(html).toContain('= Nguồn quyết định nghiệp vụ');
     expect(html).toContain(pipeline.agentStatementTitle);
-    expect(html).toContain('là lớp tương tác, điều phối tool và giải thích.');
+    expect(html).toContain('= Lớp tương tác và điều phối');
     for (const stage of pipeline.stages) {
       expect(html).toContain(stage.title);
     }
@@ -135,14 +134,14 @@ describe('TASK-011F system overview page', () => {
 
   it('represents the six decision layers', () => {
     expect(html).toContain(ruleLayers.title);
-    for (const layer of ['HARD POLICY', 'ROUTING', 'HARD SUPPRESSION', 'PTP / NEXT ACTION', 'RECOVERY OPPORTUNITY', 'NEXT BEST ACTION']) {
+    for (const layer of ['Chính sách bắt buộc (HARD POLICY)', 'Tuyến xử lý (ROUTING)', 'Chặn bắt buộc (HARD SUPPRESSION)', 'Cam kết / hành động tiếp theo (PTP / NEXT ACTION)', 'Cơ hội thu hồi (RECOVERY OPPORTUNITY)', 'Hành động đề xuất (NEXT BEST ACTION)']) {
       expect(html).toContain(layer);
     }
     expect(html).toContain('CALL');
     expect(html).toContain('CBS');
-    expect(html).toContain('Heatmap = RED');
-    expect(html).toContain('DPD ≥ 5');
-    expect(html).toContain('DPD &lt; 5');
+    expect(html).toContain('Mức cảnh báo = ĐỎ');
+    expect(html).toContain('Số ngày quá hạn từ 5 ngày');
+    expect(html).toContain('Số ngày quá hạn dưới 5 ngày');
     expect(html).toContain(routingNote);
     for (const precedence of ptpPrecedence) {
       expect(html).toContain(precedence);
@@ -163,9 +162,9 @@ describe('TASK-011F system overview page', () => {
     expect(html).toContain(architecture.intro);
     expect(html).toContain('GreenNode không phải yếu tố trang trí');
     expect(html).toContain(architecture.coreLabel);
-    expect(html).toContain('= Source of Truth');
+    expect(html).toContain('là nguồn quyết định nghiệp vụ.');
     expect(html).toContain(architecture.agentLabel);
-    expect(html).toContain('= Interaction &amp; Orchestration Layer');
+    expect(html).toContain('là lớp tương tác, điều phối công cụ nghiệp vụ và giải thích.');
     for (const layer of [architecture.frontend, architecture.api, architecture.core, architecture.agent, architecture.data]) {
       expect(html).toContain(layer.title);
       for (const item of layer.items) {
@@ -227,10 +226,10 @@ describe('TASK-011F system overview page', () => {
     expect(html).toContain('Lộ trình sản phẩm');
     expect(html).toContain('Đã có trong bản demo');
     expect(html).toContain('Hướng phát triển tiếp theo');
-    expect(html).toContain('Learning-to-rank');
-    expect(html).toContain('Outcome feedback');
+    expect(html).toContain('Học xếp hạng (Learning-to-rank)');
+    expect(html).toContain('Phản hồi kết quả (Outcome feedback)');
     expect(html).toContain('Những mục trong nhóm Hướng phát triển tiếp theo chưa phải tính năng đã triển khai.');
-    expect(html).toContain('What-if Simulation');
+    expect(html).toContain('Mô phỏng tình huống');
     expect(html).not.toContain('FUTURE / ROADMAP');
   });
 
@@ -345,7 +344,7 @@ describe('TASK-011F content contract', () => {
   it('keeps accepted SYN002846 numbers literal', () => {
     expect(heroExample.rows.filter((r) => r.label === 'Tiền vào 7 ngày')[0].value).toBe('48 triệu đồng');
     expect(heroExample.rows.filter((r) => r.label === 'Dòng tiền ròng 30 ngày')[0].value).toBe('168 triệu đồng');
-    expect(heroExample.rows.filter((r) => r.label === 'DPD')[0].value).toBe('11 ngày');
+    expect(heroExample.rows.filter((r) => r.label.includes('DPD'))[0].value).toBe('11 ngày');
     expect(whatIf.rows[0].before).toBe('48 triệu');
     expect(whatIf.rows[1].before).toBe('168 triệu');
   });

@@ -1,6 +1,6 @@
 """Authenticated local HTTP adapter for the accepted TASK-006 tool layer + TASK-008B demo routes."""
 from __future__ import annotations
-import hmac, json, os, re, threading
+import hmac, json, os, re, secrets, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from msb_tools.registry import invoke_tool
@@ -15,6 +15,8 @@ from msb_impact.engine import build_impact_report
 _demo_engine: DemoEventEngine | None = None
 _repository: ToolRepository | None = None
 _repository_lock = threading.Lock()
+_sessions: set[str] = set()
+_sessions_lock = threading.Lock()
 _DEMO_CIF = re.compile(r"(?:SYN\d{6}|GOLDEN_G\d{2})\Z")
 _BROWSER_POST_ROUTES = frozenset({
     "/demo/customer-360", "/demo/next-best-action", "/demo/simulate",
@@ -64,6 +66,11 @@ def _invalid_demo_cif() -> dict:
     return {"error": {"code": "INVALID_ARGUMENT", "message": "A synthetic demo CIF is required"}}
 
 
+def _demo_session_cookie(token: str, secure: bool = False) -> str:
+    suffix = "; Secure" if secure else ""
+    return f"msb_demo_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800{suffix}"
+
+
 class ToolHandler(BaseHTTPRequestHandler):
     server_version = "MSBCollectionTool/0.4"
 
@@ -80,6 +87,24 @@ class ToolHandler(BaseHTTPRequestHandler):
         if not self._authed():
             self._send(401, {"error": {"code": "UNAUTHORIZED", "message": "Valid bearer authentication required"}})
             return False
+        return True
+
+    def _demo_session_valid(self) -> bool:
+        cookie = self.headers.get("Cookie", "")
+        token = next((part.strip().split("=", 1)[1] for part in cookie.split(";") if part.strip().startswith("msb_demo_session=")), "")
+        with _sessions_lock:
+            return bool(token and token in _sessions)
+
+    def _https_request(self) -> bool:
+        return self.headers.get("X-Forwarded-Proto", "").lower() == "https"
+
+    def _handle_auth_get(self) -> bool:
+        if self.path != "/demo/auth/me":
+            return False
+        if self._demo_session_valid():
+            self._send(200, {"authenticated": True, "username": os.environ.get("DEMO_ADMIN_USERNAME", "")})
+        else:
+            self._send(401, {"authenticated": False})
         return True
 
     def _validate_demo_request(self, body: dict) -> bool:
@@ -104,6 +129,7 @@ class ToolHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/health":
             self._send(200, {"status": "healthy"}); return
+        if self._handle_auth_get(): return
         browser_demo = is_browser_safe_demo_route("GET", self.path)
         if not browser_demo and not self._require_auth(): return
         if browser_demo and not self._validate_demo_request({}): return
@@ -119,6 +145,30 @@ class ToolHandler(BaseHTTPRequestHandler):
         self._send(404, {"error": {"code": "NOT_FOUND", "message": "Route not found"}})
 
     def do_POST(self) -> None:
+        if self.path == "/demo/auth/logout":
+            cookie = self.headers.get("Cookie", "")
+            token = next((part.strip().split("=", 1)[1] for part in cookie.split(";") if part.strip().startswith("msb_demo_session=")), "")
+            with _sessions_lock:
+                _sessions.discard(token)
+            encoded = json.dumps({"authenticated": False}).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(encoded))); self.send_header("Set-Cookie", "msb_demo_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"); self.end_headers(); self.wfile.write(encoded)
+            return
+        if self.path == "/demo/auth/login":
+            try: body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+            except (ValueError, json.JSONDecodeError):
+                self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}}); return
+            username = body.get("username") if isinstance(body, dict) else None
+            password = body.get("password") if isinstance(body, dict) else None
+            expected_user = os.environ.get("DEMO_ADMIN_USERNAME", "")
+            expected_password = os.environ.get("DEMO_ADMIN_PASSWORD", "")
+            if not (isinstance(username, str) and isinstance(password, str) and expected_user and expected_password and hmac.compare_digest(username, expected_user) and hmac.compare_digest(password, expected_password)):
+                self._send(401, {"error": {"code": "INVALID_CREDENTIALS", "message": "Tên đăng nhập hoặc mật khẩu không đúng"}}); return
+            token = secrets.token_urlsafe(32)
+            with _sessions_lock:
+                _sessions.add(token)
+            encoded = json.dumps({"authenticated": True, "username": expected_user}, sort_keys=True).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(encoded))); self.send_header("Set-Cookie", _demo_session_cookie(token, self._https_request())); self.end_headers(); self.wfile.write(encoded)
+            return
         browser_demo = is_browser_safe_demo_route("POST", self.path)
         if not browser_demo and not self._require_auth(): return
         try: body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))

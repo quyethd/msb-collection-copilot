@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Activity, ArrowRight, BarChart3, ChevronRight, LayoutDashboard, MessageCircle, ShieldCheck, UserRound} from 'lucide-react';
+import {Activity, ArrowRight, BarChart3, ChevronRight, LayoutDashboard, LogOut, MessageCircle, ShieldCheck, UserRound} from 'lucide-react';
 
 export type Page = 'overview' | 'priority' | 'customer' | 'impact' | 'system-overview';
 export const primaryNav = [
@@ -11,12 +11,12 @@ export const primaryNav = [
 const routeLabel = (route:string) => ({CALL:'Tác nghiệp CALL', CBS:'Tác nghiệp CBS'}[route] || 'Khác');
 const actionLabel = (action:string) => ({WAIT:'Chờ theo dõi',WAIT_SELF_CURE:'Chờ khách hàng tự thanh toán',CONTACT:'Liên hệ khách hàng',REMIND:'Nhắc thanh toán',PTP_FOLLOW_UP:'Theo dõi cam kết',PTP_RECOVERY:'Xử lý cam kết không thực hiện',PARTIAL_PAYMENT:'Theo dõi thanh toán một phần',CALLBACK:'Gọi lại theo lịch',VERIFY_CONTACT:'Xác minh liên hệ',ESCALATE:'Chuyển mức xử lý'}[action] || 'Chưa có đề xuất');
 const money = (n:number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
-export function Sidebar({page,cif,setPage,open,setCopilot}:any) {
+export function Sidebar({page,cif,setPage,open,setCopilot,logout}:any) {
   return <aside className="sidebar"><div className="brand"><div className="msb">MSB</div><div><b>Trợ lý Thu hồi Nợ</b><span>Powered by GreenNode AI</span></div></div>
     <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
-    <div className="sidebar-secondary" aria-label="Điều hướng hệ thống"><div className="sidebar-separator"/><button className={`navitem secondary-navitem${page==='system-overview'?' active':''}`} aria-current={page==='system-overview'?'page':undefined} onClick={()=>setPage('system-overview')}><ShieldCheck size={18}/><span>Giới thiệu hệ thống</span></button></div>
     <div className="sidebar-separator assistant-separator"/>
     <button className="assistant-cta" onClick={()=>setCopilot(true)}><MessageCircle size={19}/><span><b>Trợ lý Thu hồi Nợ</b><small>Hỏi về quyết định</small></span><ArrowRight size={15}/></button>
+    {logout&&<button className="logout-button" onClick={logout}><LogOut size={16}/> Đăng xuất</button>}
     <div className="side-foot"><ShieldCheck size={15}/> Môi trường demo<br/><span>Dữ liệu mô phỏng</span></div></aside>;
 }
 export function Header({page}:{page:Page}) {return <header><div className="crumb">MSB / {page==='system-overview'?'Giới thiệu hệ thống':primaryNav.find(x=>x.page===page)?.label}</div><div className="header-right"><span className="live"><i/> Môi trường mô phỏng</span><div className="avatar">HT</div></div></header>}

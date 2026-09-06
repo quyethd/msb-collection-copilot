@@ -1735,6 +1735,14 @@
   .so-pipeline-arrow {
     display: none;
   }
+
+  .so-whatif-row {
+    grid-template-columns: 1fr;
+  }
+
+  .so-whatif-move {
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 820px) {

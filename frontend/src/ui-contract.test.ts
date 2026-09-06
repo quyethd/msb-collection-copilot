@@ -34,14 +34,13 @@ describe('TASK-009 demo UI contract',()=>{
     const pages=readFileSync(resolve(__dirname,'pages.tsx'),'utf8');
     expect(pages).toContain("aria-current={page===target?'page':undefined}");
     expect(source).toContain('useState<Page>(pageFromPath)');
-    expect(source).toContain("window.location.pathname==='/gioi-thieu'");
+    expect(source).toContain("'/app/priority':'priority'");
   });
-  it('integrates the system overview page state and callbacks',()=>{
+  it('uses the system overview as the public landing and keeps the app shell operational',()=>{
     expect(source).toContain("import {SystemOverviewPage} from './pages/system-overview/SystemOverviewPage';");
-    expect(source).toContain("page==='system-overview'");
-    expect(source).toContain('<SystemOverviewPage onOpenOverview');
-    expect(source).toContain('onOpenCustomer={open}');
-    expect(readFileSync(resolve(__dirname,'pages.tsx'),'utf8')).toContain('secondary-navitem');
+    expect(source).toContain('return <PublicLanding/>');
+    expect(readFileSync(resolve(__dirname,'public-pages.tsx'),'utf8')).toContain('<SystemOverviewPage');
+    expect(readFileSync(resolve(__dirname,'pages.tsx'),'utf8')).not.toContain('secondary-navitem');
   });
   it('uses browser-safe demo routes for protected data',()=>{
     for(const route of ["api('/demo/customer-360'","api('/demo/next-best-action'","api('/demo/simulate'"]) expect(source).toContain(route);

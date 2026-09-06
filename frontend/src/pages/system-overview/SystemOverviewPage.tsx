@@ -41,6 +41,7 @@ import {
   dayTimeline,
   faqs,
   finalCta,
+  greenNodeStory,
   hero,
   heroExample,
   moduleCards,
@@ -69,6 +70,8 @@ export interface SystemOverviewPageProps {
   onOpenCustomer?: (cif: string) => void;
   ctaOverviewLabel?: string;
   ctaCustomerLabel?: string;
+  heroPrimaryHref?: string;
+  heroPrimaryLabel?: string;
 }
 
 const noop = () => undefined;
@@ -78,6 +81,8 @@ export function SystemOverviewPage({
   onOpenCustomer,
   ctaOverviewLabel = 'Mở Tổng quan',
   ctaCustomerLabel = 'Xem khách hàng mẫu SYN002846',
+  heroPrimaryHref = '#pipeline',
+  heroPrimaryLabel = hero.ctaPrimary,
 }: SystemOverviewPageProps) {
   const overview = useMemo(() => onOpenOverview ?? noop, [onOpenOverview]);
   const openCustomer = useMemo(() => onOpenCustomer ?? noop, [onOpenCustomer]);
@@ -112,8 +117,8 @@ export function SystemOverviewPage({
             ))}
           </ul>
           <div className="so-hero-cta">
-            <a className="so-btn so-btn-primary" href="#pipeline">
-              {hero.ctaPrimary}
+            <a className="so-btn so-btn-primary" href={heroPrimaryHref}>
+              {heroPrimaryLabel}
               <ArrowRight size={16} />
             </a>
             <a className="so-btn so-btn-outline" href="#architecture">
@@ -161,7 +166,7 @@ export function SystemOverviewPage({
                 )}
                 {pain.title === 'Một quyết định cần tổng hợp nhiều tín hiệu.' && (
                   <ul className="so-signal-list">
-                    {['DPD', 'Dư nợ', 'Dòng tiền', 'Cam kết thanh toán', 'Lịch sử liên hệ', 'Khả năng liên hệ', 'Next action', 'Tuyến CALL / CBS'].map(
+                    {['Số ngày quá hạn (DPD)', 'Dư nợ', 'Dòng tiền', 'Cam kết thanh toán', 'Lịch sử liên hệ', 'Khả năng liên hệ', 'Hành động tiếp theo', 'Tuyến CALL / CBS'].map(
                       (signal) => (
                         <li key={signal}>{signal}</li>
                       ),
@@ -342,13 +347,13 @@ export function SystemOverviewPage({
           <div className="so-rules">
             <RuleLayer
               number={1}
-              title="HARD POLICY"
+              title="Chính sách bắt buộc (HARD POLICY)"
               icon={<ShieldCheck size={20} />}
               description="Các ràng buộc nghiệp vụ không được AI thay đổi."
             />
             <RuleLayer
               number={2}
-              title="ROUTING"
+              title="Tuyến xử lý (ROUTING)"
               icon={<GitBranch size={20} />}
               description={routingNote}
               content={
@@ -366,13 +371,13 @@ export function SystemOverviewPage({
             />
             <RuleLayer
               number={3}
-              title="HARD SUPPRESSION"
+              title="Chặn bắt buộc (HARD SUPPRESSION)"
               icon={<Ban size={20} />}
-              description="Các điều kiện cần chặn / tạm hoãn action được ưu tiên trước NBA."
+              description="Các điều kiện cần chặn / tạm hoãn hành động được ưu tiên trước hành động đề xuất tiếp theo."
             />
             <RuleLayer
               number={4}
-              title="PTP / NEXT ACTION"
+              title="Cam kết / hành động tiếp theo (PTP / NEXT ACTION)"
               icon={<CalendarDays size={20} />}
               description="Thứ tự ưu tiên các cam kết thanh toán và trạng thái liên hệ."
               content={
@@ -388,7 +393,7 @@ export function SystemOverviewPage({
             />
             <RuleLayer
               number={5}
-              title="RECOVERY OPPORTUNITY"
+              title="Cơ hội thu hồi (RECOVERY OPPORTUNITY)"
               icon={<PieChart size={20} />}
               description={scoring.disclaimer}
               content={
@@ -416,7 +421,7 @@ export function SystemOverviewPage({
             />
             <RuleLayer
               number={6}
-              title="NEXT BEST ACTION"
+              title="Hành động đề xuất (NEXT BEST ACTION)"
               icon={<ListChecks size={20} />}
               description="Hành động thân thiện với nghiệp vụ, không hiển thị mã nội bộ."
               content={
@@ -448,14 +453,14 @@ export function SystemOverviewPage({
               </ul>
             </div>
             <div className="so-arch-arrow" aria-hidden="true"><ArrowDown size={18} /></div>
-            <div className="so-arch-layer" role="group" aria-label="API / Demo layer">
+            <div className="so-arch-layer" role="group" aria-label="Lớp API và bản demo">
               <div className="so-arch-layer-title"><Workflow size={16} /> {architecture.api.title}</div>
               <ul className="so-arch-items">
                 {architecture.api.items.map((item) => <li key={item}>{item}</li>)}
               </ul>
             </div>
             <div className="so-arch-arrow" aria-hidden="true"><ArrowDown size={18} /></div>
-            <div className="so-arch-core" role="group" aria-label="Deterministic Decision Core">
+            <div className="so-arch-core" role="group" aria-label="Bộ máy quyết định theo quy tắc">
               <div className="so-arch-layer-title"><Cpu size={16} /> {architecture.core.title}</div>
               <ul className="so-arch-items so-arch-items-cols">
                 {architecture.core.items.map((item) => <li key={item}>{item}</li>)}
@@ -475,6 +480,17 @@ export function SystemOverviewPage({
                 </ul>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="so-section so-greennode-section" id="greennode">
+          <div className="so-section-head">
+            <span className="so-eyebrow">NỀN TẢNG AI</span>
+            <h2>{greenNodeStory.title}</h2>
+            <p>{greenNodeStory.intro}</p>
+          </div>
+          <div className="so-greennode-grid">
+            {greenNodeStory.components.map((component) => <article className="so-greennode-card" key={component.title}><Bot size={20}/><h3>{component.title}</h3><p>{component.detail}</p></article>)}
           </div>
         </section>
 

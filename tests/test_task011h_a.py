@@ -530,3 +530,18 @@ def test_live_vdb_retrieval_path_matches_local(semantic_service):
         assert store.count() == len(semantic_service.all_chunks)
     finally:
         server.close()
+
+
+def test_live_proof_require_live_guard(tmp_path):
+    from msb_knowledge_rag.cli import cmd_live_proof
+
+    service = KnowledgeRagService(config=KnowledgeRagConfig())
+    output = tmp_path / "proof.json"
+    code = cmd_live_proof(
+        service,
+        require_live=True,
+        output=str(output),
+        questions_limit=2,
+    )
+    assert code == 1
+    assert not output.exists()

@@ -502,3 +502,31 @@ def test_vdb_opensearch_error_never_leaks_password():
         assert "admin" not in message
     finally:
         server.close()
+
+
+def test_live_vdb_retrieval_path_matches_local(semantic_service):
+    server = _MockOpenSearchServer()
+    try:
+        store = GreennodeVdbOpenSearchClient(_live_config(server.url), dimension=384)
+        vectors = {
+            chunk.chunk_id: semantic_service.pipeline._vector_for(chunk)
+            for chunk in semantic_service.all_chunks
+        }
+        store.upsert([(chunk, vectors[chunk.chunk_id]) for chunk in semantic_service.all_chunks])
+        live = KnowledgeRagService(
+            config=_semantic_config(),
+            store=store,
+            embedder=semantic_service.embedder,
+            all_chunks=semantic_service.all_chunks,
+        )
+        assert live.posstore.is_live() is True
+        question = "Ai là nguồn quyết định nghiệp vụ cho routing, score và treatment?"
+        live_result = live.pipeline.retrieve(question)
+        local_result = semantic_service.pipeline.retrieve(question)
+        live_docs = [hit.chunk.document_id for hit in live_result.hits]
+        local_docs = [hit.chunk.document_id for hit in local_result.hits]
+        assert live_docs == local_docs
+        assert live_result.top_cosine >= 0.38
+        assert store.count() == len(semantic_service.all_chunks)
+    finally:
+        server.close()

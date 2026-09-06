@@ -114,8 +114,6 @@ Changed files:
 - associated frontend tests
 - `tests/test_task011i.py`
 
-`NOT COMMITTED`
-`NOT DEPLOYED`
 
 ## Final Approval, Deployment, And Production QA
 
@@ -141,5 +139,4 @@ Changed files:
 
 The demo session survives normal browser navigation and logout invalidates it. Because the session store is in memory, a backend restart may invalidate active sessions; this is not persistent production authentication.
 
-`TASK011I_COMMIT=<recorded after commit>`
-`NOT DEPLOYED` is superseded by the deployment evidence above after final deployment.
+`TASK011I_COMMIT=698a4be`

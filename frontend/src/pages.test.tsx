@@ -27,6 +27,13 @@ describe('Final primary navigation',()=>{
     expect(node.textContent).not.toContain('Giới thiệu hệ thống');
     expect(node.querySelector('.assistant-cta.active')).toBeNull();
   });
+  it('product logo links to the public landing without a logout action',()=>{
+    const html=renderToStaticMarkup(<Sidebar page="overview"/>);
+    const node=document.createElement('div');node.innerHTML=html;
+    expect(node.querySelector('.brand')?.getAttribute('href')).toBe('/');
+    expect(node.querySelector('.brand')?.tagName).toBe('A');
+    expect(node.querySelector('.logout-button')).toBeNull();
+  });
   it('overview has two actual-data charts and no priority table',()=>{
     const html=renderToStaticMarkup(<Overview portfolio={rows} summary={{}} open={()=>{}} loading={false}/>);
     expect(html.match(/class="panel distribution"/g)).toHaveLength(2);

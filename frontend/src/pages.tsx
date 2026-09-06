@@ -12,7 +12,7 @@ const routeLabel = (route:string) => ({CALL:'Tác nghiệp CALL', CBS:'Tác nghi
 const actionLabel = (action:string) => ({WAIT:'Chờ theo dõi',WAIT_SELF_CURE:'Chờ khách hàng tự thanh toán',CONTACT:'Liên hệ khách hàng',REMIND:'Nhắc thanh toán',PTP_FOLLOW_UP:'Theo dõi cam kết',PTP_RECOVERY:'Xử lý cam kết không thực hiện',PARTIAL_PAYMENT:'Theo dõi thanh toán một phần',CALLBACK:'Gọi lại theo lịch',VERIFY_CONTACT:'Xác minh liên hệ',ESCALATE:'Chuyển mức xử lý'}[action] || 'Chưa có đề xuất');
 const money = (n:number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 export function Sidebar({page,cif,setPage,open,setCopilot,logout}:any) {
-  return <aside className="sidebar"><div className="brand"><div className="msb">MSB</div><div><b>Trợ lý Thu hồi Nợ</b><span>Powered by GreenNode AI</span></div></div>
+  return <aside className="sidebar"><a className="brand" href="/" aria-label="Về trang giới thiệu MSB Trợ lý Thu hồi Nợ"><div className="msb">MSB</div><div><b>Trợ lý Thu hồi Nợ</b><span>Powered by GreenNode AI</span></div></a>
     <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
     <div className="sidebar-separator assistant-separator"/>
     <button className="assistant-cta" onClick={()=>setCopilot(true)}><MessageCircle size={19}/><span><b>Trợ lý Thu hồi Nợ</b><small>Hỏi về quyết định</small></span><ArrowRight size={15}/></button>

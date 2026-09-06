@@ -46,7 +46,7 @@ import {
   knowledgeAssistant,
   hero,
   heroExample,
-  moduleCards,
+  moduleGroups,
   modules,
   nbaActions,
   pains,
@@ -57,6 +57,7 @@ import {
   routeCall,
   routeCbs,
   routingNote,
+  recoveryExample,
   ruleLayers,
   sampleQuestions,
   scoring,
@@ -65,6 +66,12 @@ import {
   trust,
   whatIf,
   whoWhyWhatWhen,
+  userJourney,
+  techStack,
+  assistantFlow,
+  externalReferences,
+  journeyOutcome,
+  journeyPersona,
 } from './content';
 
 export interface SystemOverviewPageProps {
@@ -97,13 +104,6 @@ export function SystemOverviewPage({
       </a>
       <div className="so-hero">
         <div className="so-hero-inner">
-          <div className="so-brand">
-            <div className="so-brand-logo">{brand.bank}</div>
-            <div className="so-brand-name">
-              <b>{brand.product}</b>
-              <span>{brand.poweredBy}</span>
-            </div>
-          </div>
           <h1 className="so-headline">{hero.headline}</h1>
           <p className="so-value">{hero.value}</p>
           <p className="so-strong">
@@ -395,11 +395,12 @@ export function SystemOverviewPage({
             />
             <RuleLayer
               number={5}
-              title="Cơ hội thu hồi (RECOVERY OPPORTUNITY)"
+              title="Cơ Hội Thu Hồi (Recovery Opportunity)"
               icon={<PieChart size={20} />}
               description={scoring.disclaimer}
               content={
                 <div className="so-scoring">
+                  <p className="so-scoring-max-note">Các thanh dưới đây là điểm tối đa của từng nhóm, không phải điểm SYN002846 đã đạt.</p>
                   <div className="so-scoring-bars">
                     {scoring.components.map((component) => (
                       <div className="so-scoring-row" key={component.name}>
@@ -408,16 +409,43 @@ export function SystemOverviewPage({
                           <div
                             className="so-scoring-fill"
                             style={{ width: `${(component.weight / scoring.total) * 100}%` }}
-                            aria-label={`${component.name}: ${component.weight} điểm`}
+                            aria-label={`${component.name}: tối đa ${component.weight} điểm`}
                           />
                         </div>
-                        <b>{component.weight}</b>
+                        <b>{component.weight}<small> tối đa</small></b>
                       </div>
                     ))}
                   </div>
                   <div className="so-scoring-total">
-                    Tổng <strong>{scoring.total}</strong>
+                    Tổng điểm tối đa <strong>{scoring.total}</strong>
                   </div>
+                  <p className="so-scoring-source">{scoring.note}</p>
+                  <details className="so-scoring-details">
+                    <summary>Xem Cách Tính Điểm <ChevronDown size={16} aria-hidden="true" /></summary>
+                    <div className="so-scoring-example">
+                      <p className="so-scoring-example-title">Ví dụ từ dữ liệu mô phỏng — {recoveryExample.cif}</p>
+                      <p className="so-scoring-example-total">Tổng điểm: <strong>{recoveryExample.total} / 100</strong></p>
+                      <div className="so-scoring-breakdown">
+                        {recoveryExample.components.map((component) => (
+                          <article className="so-scoring-component" key={component.name}>
+                            <div className="so-scoring-component-head">
+                              <b>{component.name}</b>
+                              <strong>{component.score} / {component.maxScore}</strong>
+                            </div>
+                            <ul>
+                              {component.signals.map((signal) => (
+                                <li key={`${component.name}-${signal.label}`}>
+                                  <span><b>{signal.label}:</b> {signal.value}</span>
+                                  <strong>{signal.points}</strong>
+                                </li>
+                              ))}
+                            </ul>
+                            <p>Tổng nhóm: <b>{component.score} / {component.maxScore}</b></p>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
                 </div>
               }
             />
@@ -493,28 +521,80 @@ export function SystemOverviewPage({
           </div>
         </section>
 
+        <section className="so-visual-strip" aria-label="Chi tiết hành trình và kiến trúc sản phẩm">
+          <div className="so-visual-block" id="journey">
+            <div className="so-visual-heading">
+              <span className="so-eyebrow">HÀNH TRÌNH NGƯỜI DÙNG</span>
+              <h2>Từ danh sách → bằng chứng → hành động</h2>
+            </div>
+            <p className="so-journey-persona"><span>Người dùng</span>{journeyPersona}</p>
+            <div className="so-journey-path" aria-hidden="true"><span className="so-journey-start">Bắt đầu</span><span className="so-journey-line" /><span className="so-journey-end">Kết quả</span></div>
+            <div className="so-journey" role="list">
+              {userJourney.map((step, index) => (
+                <div className="so-journey-step" role="listitem" key={step}>
+                  <span className="so-journey-number">0{index + 1}</span>
+                  <span>{step}</span>
+                  {index < userJourney.length - 1 && <ArrowRight size={15} aria-hidden="true" />}
+                </div>
+              ))}
+            </div>
+            <p className="so-journey-outcome"><CheckCircle2 size={16} /> {journeyOutcome}</p>
+          </div>
+          <div className="so-visual-block" id="architecture-visual">
+            <div className="so-visual-heading">
+              <span className="so-eyebrow">KIẾN TRÚC + CÔNG NGHỆ</span>
+              <h2>Năm lớp rõ ràng, dễ kiểm thử</h2>
+            </div>
+            <div className="so-stack-grid">
+              {techStack.map((item) => (
+                <article className="so-stack-card" key={item.title}>
+                  <h3>{item.title}</h3>
+                  <p>{item.detail}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div className="so-visual-block" id="assistant-flow">
+            <div className="so-visual-heading">
+              <span className="so-eyebrow">HAI LUỒNG TRỢ LÝ</span>
+              <h2>Đúng luồng cho đúng câu hỏi</h2>
+            </div>
+            <div className="so-flow-grid">
+              <FlowLane title="Khách hàng / quyết định" items={assistantFlow.decision} tone="decision" />
+              <FlowLane title="Kiến thức hệ thống" items={assistantFlow.knowledge} tone="knowledge" />
+            </div>
+            <p className="so-visual-trust"><ShieldCheck size={17} /> {assistantFlow.message}</p>
+            <p className="so-visual-note">RAG là tra cứu kiến thức có nguồn, không ra quyết định nghiệp vụ.</p>
+          </div>
+        </section>
+
         <section className="so-section" id="modules">
           <div className="so-section-head">
-            <span className="so-eyebrow">CẤU TRÚC CODE</span>
+            <span className="so-eyebrow">MODULE VÀ THÀNH PHẦN</span>
             <h2>{modules.title}</h2>
             <p>{modules.intro}</p>
           </div>
-          <div className="so-module-grid">
-            {moduleCards.map((card) => (
-              <article className="so-module" key={card.name}>
-                <div className="so-module-icon"><Box size={17} /></div>
-                <h3 className="so-mono">{card.name}</h3>
-                <p>{card.role}</p>
-                {card.checks && (
-                  <ul className="so-module-checks">
-                    {card.checks.map((check) => (
-                      <li key={check}>{check}</li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-            ))}
-          </div>
+          {moduleGroups.map((group, index) => (
+            <details className="so-module-group" key={group.title} open={index === 0}>
+              <summary className="so-subsection-title">{group.title}<ChevronDown size={17} /></summary>
+              <div className="so-module-grid">
+                {group.cards.map((card) => (
+                  <article className="so-module" key={card.name}>
+                    <div className="so-module-icon"><Box size={17} /></div>
+                    <h3 className="so-mono">{card.name}</h3>
+                    <p>{card.role}</p>
+                    {card.checks && (
+                      <ul className="so-module-checks">
+                        {card.checks.map((check) => (
+                          <li key={check}>{check}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </details>
+          ))}
         </section>
 
         <section className="so-section" id="ai-role">
@@ -661,21 +741,39 @@ export function SystemOverviewPage({
             <span className="so-eyebrow">LỘ TRÌNH</span>
             <h2>{roadmap.title}</h2>
           </div>
-          <div className="so-roadmap">
-            <div className="so-roadmap-col so-roadmap-current">
+          <div className="so-roadmap so-roadmap-current">
+            <div className="so-roadmap-col">
               <h3>{roadmap.current.label}</h3>
-              <ul>
-                {roadmap.current.items.map((item) => <li key={item}><CheckCircle2 size={15} />{item}</li>)}
-              </ul>
-            </div>
-            <div className="so-roadmap-col so-roadmap-future">
-              <h3>{roadmap.future.label}</h3>
-              <ul>
-                {roadmap.future.items.map((item) => <li key={item}><Rocket size={15} />{item}</li>)}
-              </ul>
+              <ul>{roadmap.current.items.map((item) => <li key={item}><CheckCircle2 size={15} />{item}</li>)}</ul>
             </div>
           </div>
+          <div className="so-roadmap-future-grid">
+            {roadmap.futureStages.map((stage) => (
+              <article className="so-roadmap-col so-roadmap-future" key={stage.label}>
+                <span className="so-roadmap-badge">HƯỚNG PHÁT TRIỂN TƯƠNG LAI</span>
+                <h3>{stage.label}</h3>
+                <ul>{stage.items.map((item) => <li key={item}><Rocket size={15} />{item}</li>)}</ul>
+              </article>
+            ))}
+          </div>
           <p className="so-roadmap-note">{roadmap.disclaimer}</p>
+        </section>
+
+        <section className="so-section" id="references">
+          <div className="so-section-head">
+            <span className="so-eyebrow">NGUỒN THAM KHẢO</span>
+            <h2>Nguồn tham khảo cho hướng phát triển</h2>
+            <p>Đây là nguồn tham khảo bên ngoài cho các hướng tương lai, không phải cam kết về tính năng hiện tại.</p>
+          </div>
+          <div className="so-reference-grid">
+            {externalReferences.map((reference) => (
+              <a className="so-reference-card" href={reference.href} target="_blank" rel="noreferrer" key={reference.organization}>
+                <span>{reference.organization}</span>
+                <b>{reference.topic}</b>
+                <small>Xem nguồn chính thức <ArrowRight size={13} /></small>
+              </a>
+            ))}
+          </div>
         </section>
       </main>
 
@@ -736,6 +834,22 @@ function pipelineIcon(index: number) {
   const icons = [Search, Scale, GitBranch, PieChart, ListChecks, CalendarDays, Bot] as const;
   const Icon = icons[index] ?? Activity;
   return <Icon size={18} />;
+}
+
+function FlowLane({ title, items, tone }: { title: string; items: string[]; tone: 'decision' | 'knowledge' }) {
+  return (
+    <div className={`so-flow-lane so-flow-${tone}`}>
+      <h3>{title}</h3>
+      <div className="so-flow-items">
+        {items.map((item, index) => (
+          <div className="so-flow-item" key={item}>
+            <span>{item}</span>
+            {index < items.length - 1 && <ArrowRight size={14} aria-hidden="true" />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function RuleLayer({

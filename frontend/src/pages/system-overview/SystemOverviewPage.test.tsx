@@ -22,6 +22,7 @@ import {
   pains,
   pipeline,
   ptpPrecedence,
+  recoveryExample,
   routingNote,
   ruleLayers,
   sampleQuestions,
@@ -52,6 +53,8 @@ describe('TASK-011F system overview page', () => {
     for (const cta of [hero.ctaPrimary, hero.ctaSecondary]) {
       expect(html).toContain(cta);
     }
+    expect(html).not.toMatch(/<div class="so-hero">[\s\S]*?<div class="so-brand">/);
+    expect(html).toContain('so-footer-brand');
   });
 
   it('shows the synthetic-data disclaimer', () => {
@@ -137,7 +140,7 @@ describe('TASK-011F system overview page', () => {
 
   it('represents the six decision layers', () => {
     expect(html).toContain(ruleLayers.title);
-    for (const layer of ['Chính sách bắt buộc (HARD POLICY)', 'Tuyến xử lý (ROUTING)', 'Chặn bắt buộc (HARD SUPPRESSION)', 'Cam kết / hành động tiếp theo (PTP / NEXT ACTION)', 'Cơ hội thu hồi (RECOVERY OPPORTUNITY)', 'Hành động đề xuất (NEXT BEST ACTION)']) {
+    for (const layer of ['Chính sách bắt buộc (HARD POLICY)', 'Tuyến xử lý (ROUTING)', 'Chặn bắt buộc (HARD SUPPRESSION)', 'Cam kết / hành động tiếp theo (PTP / NEXT ACTION)', 'Cơ Hội Thu Hồi (Recovery Opportunity)', 'Hành động đề xuất (NEXT BEST ACTION)']) {
       expect(html).toContain(layer);
     }
     expect(html).toContain('CALL');
@@ -160,10 +163,37 @@ describe('TASK-011F system overview page', () => {
     expect(html).not.toMatch(/NBA-\d{3}/);
   });
 
+  it('explains the real Recovery Opportunity calculation for SYN002846', () => {
+    expect(html).toContain('Các thanh dưới đây là điểm tối đa của từng nhóm, không phải điểm SYN002846 đã đạt.');
+    expect(html).toContain('Xem Cách Tính Điểm');
+    expect(html).toContain('Ví dụ từ dữ liệu mô phỏng — SYN002846');
+    expect(html).toContain('Tổng điểm tối đa');
+    expect(html).toContain('47 / 100');
+    expect(html).toContain('Cam kết thanh toán (PTP)');
+    expect(html).toContain('Có tín hiệu thu nhập từ lương');
+    expect(html).toContain('Số lần không liên lạc được');
+    expect(html).not.toContain('Có nguồn SALARY');
+    expect(html).not.toContain('dữ liệu UTC');
+    expect(html).not.toContain('phân vị 0,9697');
+    expect(html).not.toContain('module msb_recovery');
+    expect(html).not.toContain('RULE_BASE_V1');
+    expect(recoveryExample.total).toBe(47);
+    expect(recoveryExample.components.map((component) => component.score)).toEqual([8, 20, 4, 11, 4, 0]);
+    expect(recoveryExample.components.reduce((sum, component) => sum + component.score, 0)).toBe(recoveryExample.total);
+    expect(recoveryExample.components.map((component) => component.maxScore)).toEqual([20, 25, 20, 15, 15, 5]);
+    for (const component of recoveryExample.components) {
+      expect(html).toContain(`${component.score} / ${component.maxScore}`);
+      for (const signal of component.signals) {
+        expect(html).toContain(signal.value);
+        expect(html).toContain(signal.points);
+      }
+    }
+  });
+
   it('contains the architecture section with separated decision and knowledge paths', () => {
     expect(html).toContain(architecture.title);
     expect(html).toContain(architecture.intro);
-    expect(html).toContain('GreenNode không phải yếu tố trang trí');
+    expect(html).toContain('Kiểm tra độ tin cậy, khả năng truy vết, kiểm thử và vận hành lâu dài');
     expect(html).toContain(architecture.coreLabel);
     expect(html).toContain('là nguồn quyết định nghiệp vụ.');
     expect(html).toContain(architecture.agentLabel);
@@ -215,7 +245,7 @@ describe('TASK-011F system overview page', () => {
     expect(html).toContain('Đã kiểm tra Prompt Injection');
     expect(html).toContain('Không lộ lý do suy luận');
     expect(html).not.toContain('Đã kiểm chứng AgentBase kết nối công cụ quyết định và giữ nguyên kết quả nghiệp vụ.');
-    expect(html).toContain('Đã kiểm chứng kết nối GreenNode Vector Database và truy xuất kho kiến thức (RAG) trên môi trường demo / live proof.');
+    expect(html).toContain('Kho kiến thức có nguồn tham khảo đã được kiểm tra trong bản demo.');
     expect(html).toContain('Lý do suy luận nội bộ không được tiết lộ.');
     expect(html).toContain('Trả lời kiến thức có nguồn (RAG)');
     expect(html).not.toMatch(/AgentBase[\s\S]{0,40}PASS/i);
@@ -267,10 +297,13 @@ describe('TASK-011F system overview page', () => {
   it('shows a roadmap clearly marked as future', () => {
     expect(html).toContain('Lộ trình sản phẩm');
     expect(html).toContain('Đã có trong bản demo');
-    expect(html).toContain('Hướng phát triển tiếp theo');
-    expect(html).toContain('Học xếp hạng (Learning-to-rank)');
-    expect(html).toContain('Phản hồi kết quả (Outcome feedback)');
-    expect(html).toContain('Những mục trong nhóm Hướng phát triển tiếp theo chưa phải tính năng đã triển khai.');
+    expect(html).toContain('Giai đoạn 1 — Kết nối dữ liệu');
+    expect(html).toContain('Giai đoạn 2 — AI hỗ trợ tác nghiệp');
+    expect(html).toContain('Giai đoạn 3 — Tối ưu liên tục');
+    expect(html).toContain('HƯỚNG PHÁT TRIỂN TƯƠNG LAI');
+    expect(html).toContain('Cả ba giai đoạn đều là Hướng phát triển tương lai');
+    expect(html).toContain('T24 / Temenos Transact');
+    expect(html).toContain('DigiLenO');
     expect(html).toContain('Mô phỏng tình huống');
     expect(html).not.toContain('FUTURE / ROADMAP');
   });

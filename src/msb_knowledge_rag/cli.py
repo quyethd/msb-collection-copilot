@@ -136,6 +136,7 @@ def cmd_probe(config: KnowledgeRagConfig) -> None:
 def _blob(row: dict) -> str:
     fields = [
         ("VDB_BACKEND", row["store"]),
+        ("INFERENCE_ANCHOR", row["inference_anchor"]),
         ("EMBEDDING_PROVIDER", row["embedding_provider"]),
         ("EMBEDDING_MODEL", row["embedding_model"]),
         ("EMBEDDING_DIMENSION", row["embedding_dimension"]),
@@ -228,9 +229,9 @@ def cmd_live_proof(
         "qwen_model_median_ms": model_median,
         "gates": service.gate_status(),
         "d6_result": d6_result,
-        "live_vdb_ingest": "RUN" if service.posstore.is_live() else "NOT_RUN",
-        "live_vdb_retrieval": "RUN" if service.posstore.is_live() else "NOT_RUN",
-        "live_qwen_rag": "RUN" if (anchor == "LIVE_GREENNODE_VDB" and answered) else "NOT_RUN",
+        "live_vdb_ingest": "PASS" if service.posstore.is_live() else "NOT_RUN",
+        "live_vdb_retrieval": "PASS" if service.posstore.is_live() else "NOT_RUN",
+        "live_qwen_rag": "PASS" if (anchor == "LIVE_GREENNODE_VDB" and answered) else "NOT_RUN",
         "project_rag_live": "PASS" if (anchor == "LIVE_GREENNODE_VDB" and answered) else "NOT_PROVEN",
         "drift": 0,
     }

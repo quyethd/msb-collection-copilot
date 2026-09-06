@@ -442,6 +442,7 @@ def test_vdb_opensearch_ingest_uses_knn_mapping_and_idempotent_ids():
         mapping = server.mapping
         assert mapping["mappings"]["properties"]["embedding"]["type"] == "knn_vector"
         assert mapping["mappings"]["properties"]["embedding"]["dimension"] == 384
+        assert mapping["settings"]["index"]["knn"] is True
         method = mapping["mappings"]["properties"]["embedding"]["method"]
         assert method["name"] == "hnsw" and method["space_type"] == "cosinesimil"
         bulk = [raw for method, path, _, raw in server.requests if path.endswith("/_bulk")][-1]

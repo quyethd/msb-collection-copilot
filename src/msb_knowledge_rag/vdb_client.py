@@ -122,11 +122,20 @@ class GreennodeVdbOpenSearchClient:
         except Exception as error:
             raise VdbUnavailable(f"vDB OpenSearch {method} {path} failed: {error!r}") from error
 
+    def _index_exists(self) -> bool:
+        try:
+            self._request("GET", self.index)
+            return True
+        except VdbUnavailable:
+            return False
+
     def _ensure_index(self) -> None:
         if self._index_ready:
             return
         mapping = {
-            "settings": {"number_of_shards": 1, "number_of_replicas": 0},
+            "settings": {
+                "index": {"knn": True, "number_of_shards": 1, "number_of_replicas": 0}
+            },
             "mappings": {
                 "properties": {
                     "embedding": {
@@ -150,9 +159,16 @@ class GreennodeVdbOpenSearchClient:
                 }
             },
         }
-        result = self._request("PUT", self.index, mapping)
-        if result.get("acknowledged") is not True:
-            raise VdbUnavailable(f"vDB OpenSearch index creation not acknowledged: {result!r}")
+        try:
+            result = self._request("PUT", self.index, mapping)
+        except VdbUnavailable:
+            if not self._index_exists():
+                raise
+        else:
+            if result.get("acknowledged") is not True:
+                raise VdbUnavailable(
+                    f"vDB OpenSearch index creation not acknowledged: {result!r}"
+                )
         self._index_ready = True
 
     def upsert(self, pairs: list[tuple[KnowledgeChunk, list[float]]]) -> int:

@@ -1,5 +1,39 @@
 # TASK-011H — GREENNODE PROJECT KNOWLEDGE RAG FOUNDATION (FINAL)
 
+## TASK-011H-A ADDENDUM — LIVE RAG PREP (merged commits)
+
+Foundation content below (deterministic tier) is intentionally unchanged and
+remains the business-semantics baseline. The live-RAG prep work is recorded in:
+
+- `task-results/TASK-011H-A-LIVE-RAG-PREP.md` — full TASK-011H-A report
+  (embedding decision, calibration, eval, live Qwen proof, provisioning package).
+- `task-results/TASK-011H-A-LIVE-PROOF.json` — one-shot evidence artifact
+  produced by `python -m msb_knowledge_rag.cli --provider local-multilingual --live live-proof`.
+- Commits on top of `d90607e`: `c857d0e` (pipeline + Qwen live proof),
+  `9dd1e41` (OpenSearch HTTP-contract tests), `47d61e3` (live retrieval parity integration test),
+  `11be1cd` (`live-proof` command + evidence device artifact). Test suite now **51/51**.
+
+Semantic tier (LOCAL_MOCKED_VDB anchor, `paraphrase-multilingual-MiniLM-L12-v2`, 384d):
+
+| metric | foundation (deterministic) | TASK-011H-A semantic |
+|---|---|---|
+| Recall@3 | 0.9615 | **1.0** |
+| MRR | 0.75 | **0.8974** |
+| GROUNDING / CITATION | 0.9615 / 1.0 | 1.0 / 1.0 |
+| BOUNDARY / REFUSAL / UNSUPPORTED | 1.0 / 1.0 / 0.0 | 1.0 / 1.0 / 0.0 |
+
+- **D6 "Quyết định cuối cùng thuộc về ai?" now PASSES** on the semantic tier
+  (retrieves `20-trust-and-safety`, answered grounded) — the former known limitation is resolved.
+- OOS refusal gate: raw top-1 cosine >= `SEMANTIC_MIN_SCORE=0.38` (calibrated: OOS max 0.337,
+  domain min 0.415); all 3 out-of-scope questions refuse; lexical bigram is a confidence feature only.
+- Live GreenNode MaaS Qwen flash: 10/10 required questions answered, all cited `[n]`;
+  `MaasRagAnswerer` consumes only `message.content` (`PRIVATE_REASONING_AUDIT=PASS`).
+- Live vDB gates remain honestly held (owner provisioning pending):
+  `GRENNODE_VDB_AVAILABLE=NEEDS_APPROVAL`, `LIVE_VDB_INGEST/RETRIEVAL=NOT_RUN`,
+  `LIVE_QWEN_RAG=NOT_RUN`, `PROJECT_KNOWLEDGE_RAG_LIVE=NOT_PROVEN`, `INFERENCE_ANCHOR=LOCAL_MOCKED_VDB`.
+- vDB OpenSearch kNN client is contract-tested against a mock endpoint (knn_vector/cosinesimil mapping,
+  idempotent `_id=chunk_id` ingest, client-side cosine recompute with local/store parity, no credential leaks).
+
 ## Status
 **TASK-011H FOUNDATION PASS — READY FOR COPILOT INTEGRATION** (in isolated worktree)
 

@@ -137,6 +137,10 @@ Changed files:
 - `SECRET_AUDIT=PASS`
 - `BUSINESS_SEMANTICS_DRIFT=0`
 
+Deployment backup: `/www/wwwroot/msb-collection-copilot.duckdns.org.backup-20260906T015434Z`.
+The deployed `index.html` SHA-256 matches `frontend/dist/index.html`; static files are owned by `www:www`.
+Public NAT-pinned smoke passed for `/`, `/gioi-thieu`, `/login`, browser-safe demo APIs, protected tools, and protected Agent tools. Public login cookie attributes were verified without recording the token.
+
 The demo session survives normal browser navigation and logout invalidates it. Because the session store is in memory, a backend restart may invalidate active sessions; this is not persistent production authentication.
 
 `TASK011I_COMMIT=698a4be`

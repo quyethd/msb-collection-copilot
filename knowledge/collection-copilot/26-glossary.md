@@ -5,12 +5,12 @@ section: glossary
 topic: PRODUCT
 audience: ALL
 content_type: reference
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Bảng thuật ngữ
@@ -55,6 +55,11 @@ updated_at: 2026-09-05
 ## Quy ước dữ liệu
 
 - **3.000 khách hàng mô phỏng**, seed 20260828, ngày tham chiếu 2026-08-28.
-- **Knowledge version**: TASK-011H-V1.
-- **Source commit**: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277.
-- **Bộ golden questions RAG**: ~20-25 câu, bốn nhóm A/B/C/D.
+- **Knowledge version**: TASK-011H-V2.
+- **Source commit**: 617a1ed84e6001155ae87b467bffbf962d3ce3cc.
+- **vDB index**: msb-collection-knowledge-v2 (V2, hiện tại); bản V1 được giữ ở
+  msb-collection-knowledge-v1.
+- **Embedding**: mô hình đa ngôn ngữ local MiniLM-L12 (384 chiều); MaaS chưa có
+  mô hình embedding.
+- **Bộ golden questions RAG**: 26+ câu hỏi kiến thức nhóm A/B/C/D cộng nhóm
+  ranh giới và bảo mật.

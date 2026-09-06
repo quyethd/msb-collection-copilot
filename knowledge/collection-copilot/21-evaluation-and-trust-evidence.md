@@ -5,12 +5,12 @@ section: evaluation
 topic: TRUST
 audience: TECH
 content_type: technical
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Đánh giá hệ thống và bằng chứng tin cậy
@@ -54,11 +54,35 @@ Chỉ công bố số liệu khi:
 - nêu rõ nguồn dữ liệu (dữ liệu mô phỏng, không phải dữ liệu thật);
 - phân biệt kết quả demo / foundation test với kết quả production.
 
-## Đánh giá RAG (TASK-011H)
+## Đánh giá RAG (TASK-011H / TASK-011H-A)
 
-Bộ golden questions cho RAG gồm khoảng 20-25 câu hỏi chia bốn nhóm; chỉ số đo:
+Bộ golden questions cho RAG gồm các câu hỏi chia nhóm A/B/C/D; chỉ số đo:
 Recall@3, MRR, GROUNDING_PASS_RATE, CITATION_PASS_RATE, BOUNDARY_PASS_RATE,
-UNSUPPORTED_CLAIM_RATE. Xem tài liệu có liên quan về TASK-011H evaluation.
+UNSUPPORTED_CLAIM_RATE, REFUSAL_PASS_RATE. Ngưỡng admission semantic:
+SEMANTIC_MIN_SCORE = 0.38 (hiệu chỉnh trên phiên bản kiến thức hiện tại).
+
+## Kết quả live (TASK-011H live proof)
+
+- **Live GreenNode vDB OpenSearch**: ingest và truy xuất live PASS.
+- **Live Qwen Flash RAG**: câu trả lời có nguồn (citation) PASS.
+- Chỉ số live proof: R@3 = 1.0, MRR = 0.8974, GROUNDING/CITATION/BOUNDARY =
+  1.0, UNSUPPORTED_CLAIM_RATE = 0.0, REFUSAL_PASS_RATE = 1.0, D6 = PASS.
+- Bộ security audit: SECRET_AUDIT = PASS, SECRET_QUERY_SAFE = PASS,
+  PRIVATE_REASONING_AUDIT = PASS.
+- INFERENCE_ANCHOR = LIVE_GREENNODE_VDB; RAG_LIVE_PROOF = PASS;
+  COPILOT_INTEGRATION = NO; DEPLOY = NO.
+
+## Kiểm chứng kho kiến thức V2 (TASK-011H-A.1)
+
+- Kho kiến thức được cập nhật lên **TASK-011H-V2** dựa trên current main
+  (commit 617a1ed84e6001155ae87b467bffbf962d3ce3cc) và ingest vào index
+  `msb-collection-knowledge-v2` trên GreenNode vDB.
+- Index phiên bản V1 được giữ nguyên (V1_PRESERVED) để có thể rollback.
+- Kiểm tra rò rỉ kiến thức cũ (V1_ACTIVE_RETRIEVAL_LEAK, STALE_PRODUCT_FACTS_ACTIVE,
+  STALE_NAVIGATION_ANSWER) đều PASS: không có chunk phiên bản V1 xuất hiện trong
+  index V2, không có tuyên bố điều hướng/sp cũ còn hiệu lực.
+- BUSINESS_SEMANTICS_DRIFT = 0: các quyết định nghiệp vụ (routing, score, NBA,
+  PTP, dòng tiền, self-cure, mô phỏng, tác động) không đổi.
 
 ## Nguồn
 

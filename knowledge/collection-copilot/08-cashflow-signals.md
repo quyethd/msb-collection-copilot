@@ -5,12 +5,12 @@ section: cashflow_signals
 topic: CASHFLOW
 audience: ALL
 content_type: business
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Tín hiệu dòng tiền

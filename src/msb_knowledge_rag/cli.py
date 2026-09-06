@@ -6,14 +6,41 @@ import re
 import sys
 from pathlib import Path
 
-from .config import KNOWLEDGE_VERSION, SOURCE_COMMIT, KnowledgeRagConfig
+from .config import KNOWLEDGE_VERSION, SOURCE_COMMIT, V1_VDB_INDEX, KnowledgeRagConfig
 from .corpus import load_corpus
 from .evaluation import GOLDEN_QUESTIONS, evaluate, secret_audit
 from .latency import latency_report
 from .probe import run_probe
 from .service import KnowledgeRagService, build_live_rag_service, build_service
+from .stale import (
+    stale_navigation_answer_check,
+    stale_product_fact_scan,
+    v1_index_preservation_check,
+    v1_retrieval_leak_scan,
+)
 
-LIVE_PROOF_QUESTIONS = ("A1", "A2", "A3", "A6", "A7", "B1", "B2", "D2", "D5", "D6")
+LIVE_PROOF_QUESTIONS = (
+    "A1",
+    "A2",
+    "A3",
+    "A6",
+    "A7",
+    "B1",
+    "B2",
+    "D2",
+    "D5",
+    "D6",
+    "C6",
+    "C7",
+    "C8",
+    "C9",
+    "C10",
+    "D7",
+    "D8",
+    "D9",
+    "D10",
+    "D11",
+)
 
 
 def _print_help(parser: argparse.ArgumentParser) -> None:
@@ -137,6 +164,15 @@ def _blob(row: dict) -> str:
     fields = [
         ("VDB_BACKEND", row["store"]),
         ("INFERENCE_ANCHOR", row["inference_anchor"]),
+        ("KNOWLEDGE_VERSION", row["knowledge_version"]),
+        ("SOURCE_COMMIT", row["source_commit"]),
+        ("V1_INDEX", row["V1_INDEX"]),
+        ("V2_INDEX", row["V2_INDEX"]),
+        ("V2_INDEX_CREATED", row["V2_INDEX_CREATED"]),
+        ("V1_PRESERVED", row["V1_PRESERVED"]),
+        ("V1_ACTIVE_RETRIEVAL_LEAK", row["V1_ACTIVE_RETRIEVAL_LEAK"]),
+        ("STALE_PRODUCT_FACTS_ACTIVE", row["STALE_PRODUCT_FACTS_ACTIVE"]),
+        ("STALE_NAVIGATION_ANSWER", row["STALE_NAVIGATION_ANSWER"]),
         ("EMBEDDING_PROVIDER", row["embedding_provider"]),
         ("EMBEDDING_MODEL", row["embedding_model"]),
         ("EMBEDDING_DIMENSION", row["embedding_dimension"]),
@@ -144,11 +180,15 @@ def _blob(row: dict) -> str:
         ("CHUNKS", row["indexed_chunks"]),
         ("RECALL_AT_3", row["recall_3"]),
         ("MRR", row["mrr"]),
+        ("CITATION_PASS_RATE", row["citation_pass_rate"]),
+        ("BOUNDARY_PASS_RATE", row["boundary_pass_rate"]),
+        ("UNSUPPORTED_CLAIM_RATE", row["unsupported_claim_rate"]),
         ("LIVE_GREENNODE_MAAS", "RUN" if row["qwen_answered"] else "NOT_RUN"),
         ("D6_RESULT", row["d6_result"]),
         ("LIVE_VDB_INGEST", row["live_vdb_ingest"]),
         ("LIVE_VDB_RETRIEVAL", row["live_vdb_retrieval"]),
         ("LIVE_QWEN_RAG", row["live_qwen_rag"]),
+        ("LIVE_QWEN_RAG_V2", row["live_qwen_rag"]),
         ("PROJECT_KNOWLEDGE_RAG_LIVE", row["project_rag_live"]),
         ("BUSINESS_SEMANTICS_DRIFT", row["drift"]),
         ("COPILOT_INTEGRATION", "NO"),
@@ -208,6 +248,20 @@ def cmd_live_proof(
     model_median = sorted(a.get("model_ms", 0) for a in answers if a["status"] == "ANSWERED")
     model_median = model_median[len(model_median) // 2] if model_median else 0.0
 
+    stale_facts = stale_product_fact_scan(service.all_chunks)
+    leak_scan = v1_retrieval_leak_scan(service)
+    nav_check = stale_navigation_answer_check(service)
+    store_index = getattr(service.posstore, "index", None)
+    store_live = service.posstore.is_live()
+    if store_live:
+        versions = service.posstore.knowledge_versions()
+        v2_created = bool(versions.get(KNOWLEDGE_VERSION, 0) > 0)
+        v1_preserved = v1_index_preservation_check(service.config)
+    else:
+        versions = {}
+        v2_created = False
+        v1_preserved = {"V1_PRESERVED": "NOT_RUN"}
+
     row = {
         "task": "TASK-011H-A",
         "knowledge_version": KNOWLEDGE_VERSION,
@@ -219,8 +273,26 @@ def cmd_live_proof(
         "embedding_dimension": service.embedder.dimension(),
         "documents": len(documents),
         "indexed_chunks": indexed,
+        "index": store_index,
+        "V1_INDEX": V1_VDB_INDEX,
+        "V2_INDEX": store_index,
+        "V2_INDEX_CREATED": "NOT_RUN"
+        if not store_live
+        else ("PASS" if v2_created else "FAIL"),
+        "versions_on_store": versions,
+        "V1_PRESERVED": v1_preserved.get("V1_PRESERVED", "NOT_RUN"),
+        "v1_preserved_detail": v1_preserved,
+        "V1_ACTIVE_RETRIEVAL_LEAK": leak_scan["V1_ACTIVE_RETRIEVAL_LEAK"],
+        "STALE_PRODUCT_FACTS_ACTIVE": stale_facts["STALE_PRODUCT_FACTS_ACTIVE"],
+        "STALE_NAVIGATION_ANSWER": nav_check["STALE_NAVIGATION_ANSWER"],
+        "nav_top_docs": nav_check.get("nav_top_docs", []),
         "recall_3": eval_summary.get("Recall@3"),
         "mrr": eval_summary.get("MRR"),
+        "grounding_pass_rate": eval_summary.get("GROUNDING_PASS_RATE"),
+        "citation_pass_rate": eval_summary.get("CITATION_PASS_RATE"),
+        "boundary_pass_rate": eval_summary.get("BOUNDARY_PASS_RATE"),
+        "unsupported_claim_rate": eval_summary.get("UNSUPPORTED_CLAIM_RATE"),
+        "refusal_pass_rate": eval_summary.get("REFUSAL_PASS_RATE"),
         "eval_summary": eval_summary,
         "security": {k: security[k] for k in security if isinstance(security[k], str)},
         "latency_phases": latency.get("phases", {}),
@@ -229,8 +301,8 @@ def cmd_live_proof(
         "qwen_model_median_ms": model_median,
         "gates": service.gate_status(),
         "d6_result": d6_result,
-        "live_vdb_ingest": "PASS" if service.posstore.is_live() else "NOT_RUN",
-        "live_vdb_retrieval": "PASS" if service.posstore.is_live() else "NOT_RUN",
+        "live_vdb_ingest": "PASS" if store_live else "NOT_RUN",
+        "live_vdb_retrieval": "PASS" if store_live else "NOT_RUN",
         "live_qwen_rag": "PASS" if (anchor == "LIVE_GREENNODE_VDB" and answered) else "NOT_RUN",
         "project_rag_live": "PASS" if (anchor == "LIVE_GREENNODE_VDB" and answered) else "NOT_PROVEN",
         "drift": 0,

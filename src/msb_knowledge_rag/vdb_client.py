@@ -53,6 +53,12 @@ class InProcessMockVectorStore:
         self._entries = list(pairs)
         return len(self._entries)
 
+    def knowledge_versions(self) -> dict[str, int]:
+        versions: dict[str, int] = {}
+        for chunk, _ in self._entries:
+            versions[chunk.knowledge_version] = versions.get(chunk.knowledge_version, 0) + 1
+        return versions
+
     def search(self, query_vector: list[float], top_k: int = 3) -> list[RetrievalHit]:
         scored = [
             RetrievalHit(chunk=chunk, score=cosine_similarity(query_vector, vector))
@@ -221,6 +227,25 @@ class GreennodeVdbOpenSearchClient:
         self._ensure_index()
         result = self._request("GET", f"{self.index}/_count")
         return int(result.get("count", 0))
+
+    def knowledge_versions(self) -> dict[str, int]:
+        """Term aggregation over the knowledge_version field (0 V1 chunks on the
+        V2 index proves no cross-version leakage; non-zero V1 chunks on the V1
+        index proves V1_PRESERVED)."""
+        self._ensure_index()
+        body = {
+            "size": 0,
+            "aggs": {
+                "versions": {
+                    "terms": {"field": "knowledge_version", "size": 100}
+                }
+            },
+        }
+        result = self._request("POST", f"{self.index}/_search", body)
+        buckets = ((result.get("aggregations") or {}).get("versions") or {}).get(
+            "buckets"
+        ) or []
+        return {bucket["key"]: int(bucket["doc_count"]) for bucket in buckets}
 
     @staticmethod
     def _document(chunk: KnowledgeChunk, vector: list[float]) -> dict:

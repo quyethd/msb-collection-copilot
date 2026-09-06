@@ -5,12 +5,12 @@ section: users_and_use_cases
 topic: PRODUCT
 audience: ALL
 content_type: overview
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Người dùng và tình huống sử dụng
@@ -56,7 +56,15 @@ Chuyên gia xem xét tính bền vững.
 ### Ban giám khảo Hackathon
 
 Đánh giá bài toán, giải pháp, giá trị và độ tin cậy của hệ thống thông qua
-trang Giới thiệu hệ thống và các bằng chứng kiểm chứng.
+trang giới thiệu sản phẩm công khai (landing) và các bằng chứng kiểm chứng.
+
+## Truy cập sản phẩm
+
+1. Mở trang giới thiệu sản phẩm (landing) tại `/` — công khai, chưa cần đăng nhập.
+2. Chọn **Đăng nhập hệ thống** để tới trang đăng nhập demo `/login`.
+3. Đăng nhập bằng tài khoản demo do team cung cấp để vào khu vực ứng dụng `/app`.
+4. Trong khu vực ứng dụng, dùng sidebar để chuyển giữa Tổng quan, Danh sách ưu
+   tiên, Khách hàng, Tác động dự kiến và mở Trợ lý.
 
 ## Tình huống sử dụng điển hình
 

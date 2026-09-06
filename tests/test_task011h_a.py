@@ -3,10 +3,14 @@ semantic admission gate, latency harness, LLM citation parsing, security audit."
 
 from __future__ import annotations
 
+from dataclasses import replace
+from pathlib import Path
+
 import pytest
 
 from msb_knowledge_rag.answerer import MaasRagAnswerer
 from msb_knowledge_rag.config import KnowledgeRagConfig
+from msb_knowledge_rag.corpus import load_corpus
 from msb_knowledge_rag.embedding import (
     EmbeddingUnavailable,
     IdfLocalEmbedder,
@@ -24,6 +28,10 @@ from msb_knowledge_rag.evaluation import (
 from msb_knowledge_rag.latency import latency_report
 from msb_knowledge_rag.models import RagAnswer
 from msb_knowledge_rag.service import KnowledgeRagService
+from msb_knowledge_rag.stale import (
+    stale_product_fact_scan,
+    v1_retrieval_leak_scan,
+)
 from msb_knowledge_rag.vdb_client import (
     GreennodeVdbOpenSearchClient,
     InProcessMockVectorStore,
@@ -33,6 +41,8 @@ from msb_knowledge_rag.vdb_client import (
 
 SEMANTIC = "local-multilingual"
 FASTEMBED = LocalMultilingualEmbedder.available()
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CORPUS_PATH = REPO_ROOT / "knowledge" / "collection-copilot"
 
 
 def _semantic_config() -> KnowledgeRagConfig:
@@ -348,6 +358,25 @@ class _MockOpenSearchHandler(BaseHTTPRequestHandler):
             self._send(200, {"items": items})
         elif self.path.endswith("/_search"):
             body = json.loads(raw)
+            if body.get("aggs"):
+                agg = body["aggs"].get("versions", {})
+                field = agg.get("terms", {}).get("field", "knowledge_version")
+                counts: dict[str, int] = {}
+                for doc in self.server.docs.values():
+                    key = doc.get(field, "") or ""
+                    counts[key] = counts.get(key, 0) + 1
+                buckets = [
+                    {"key": key, "doc_count": count}
+                    for key, count in sorted(counts.items())
+                ]
+                self._send(
+                    200,
+                    {
+                        "hits": {"hits": []},
+                        "aggregations": {"versions": {"buckets": buckets}},
+                    },
+                )
+                return
             vector = body["query"]["knn"]["embedding"]["vector"]
             size = body.get("size", 10)
             scored = [
@@ -546,3 +575,132 @@ def test_live_proof_require_live_guard(tmp_path):
     )
     assert code == 1
     assert not output.exists()
+
+
+# --- TASK-011H-A.1 knowledge V2 freshness / stale-leak admission ---
+
+
+def test_a1_v2_constants_distinct_indexes():
+    from msb_knowledge_rag.config import (
+        KNOWLEDGE_VERSION,
+        V1_KNOWLEDGE_VERSION,
+        V1_VDB_INDEX,
+        V2_VDB_INDEX,
+    )
+
+    assert KNOWLEDGE_VERSION == "TASK-011H-V2"
+    assert V1_KNOWLEDGE_VERSION == "TASK-011H-V1"
+    assert V1_VDB_INDEX != V2_VDB_INDEX
+    assert V2_VDB_INDEX == "msb-collection-knowledge-v2"
+
+
+def test_a1_golden_set_includes_v2_questions_and_d3_evidence_is_v2():
+    from msb_knowledge_rag.config import V1_KNOWLEDGE_VERSION
+
+    ids = {question.question_id for question in GOLDEN_QUESTIONS}
+    for new_id in ("C6", "C7", "C8", "C9", "C10", "D7", "D8", "D9", "D10", "D11"):
+        assert new_id in ids
+    d3 = next(question for question in GOLDEN_QUESTIONS if question.question_id == "D3")
+    assert "TASK-011H-V2" in d3.expected_evidence
+    assert V1_KNOWLEDGE_VERSION not in d3.expected_evidence
+
+
+def test_a1_corpus_has_no_stale_sidebar_phrase():
+    from msb_knowledge_rag.chunking import chunk_all
+
+    chunks = chunk_all(load_corpus(CORPUS_PATH))
+    text = " ".join(chunk.content for chunk in chunks).lower()
+    assert "giới thiệu hệ thống" not in text
+
+
+def test_a1_stale_product_fact_scan_clean_on_corpus():
+    from msb_knowledge_rag.chunking import chunk_all
+
+    chunks = chunk_all(load_corpus(CORPUS_PATH))
+    result = stale_product_fact_scan(chunks)
+    assert result["STALE_PRODUCT_FACTS_ACTIVE"] == "PASS"
+    assert result["stale_matches"] == []
+
+
+class _FakeHit:
+    def __init__(self, chunk):
+        self.chunk = chunk
+
+
+class _FakeResult:
+    def __init__(self, hits):
+        self.hits = hits
+
+
+class _FakePipeline:
+    def __init__(self, hits):
+        self._hits = hits
+
+    def retrieve(self, question):
+        return _FakeResult(self._hits)
+
+
+class _FakeService:
+    def __init__(self, chunk):
+        self.pipeline = _FakePipeline([_FakeHit(chunk)])
+
+
+def test_a1_v1_retrieval_leak_scan_flags_v1_chunks():
+    service = _FakeService(_chunk("d1::k1"))
+    result = v1_retrieval_leak_scan(service, questions=["Q1", "Q2"])
+    assert result["V1_ACTIVE_RETRIEVAL_LEAK"] == "FAIL"
+    assert result["v1_chunks_on_active_store"] == 2
+
+
+def test_a1_v1_retrieval_leak_scan_passes_on_v2_chunks():
+    v2 = replace(_chunk("d1::k1"), knowledge_version="TASK-011H-V2")
+    result = v1_retrieval_leak_scan(_FakeService(v2), questions=["Q1"])
+    assert result["V1_ACTIVE_RETRIEVAL_LEAK"] == "PASS"
+    assert result["v1_chunks_on_active_store"] == 0
+
+
+@pytest.mark.skipif(not FASTEMBED, reason="fastembed not installed")
+def test_a1_stale_navigation_answer_check_passes(semantic_service):
+    from msb_knowledge_rag.stale import stale_navigation_answer_check
+
+    result = stale_navigation_answer_check(semantic_service)
+    assert result["STALE_NAVIGATION_ANSWER"] == "PASS"
+    assert result["nav_mentions_stale_claim"] is False
+
+
+def test_a1_opensearch_knowledge_versions_aggregation():
+    server = _MockOpenSearchServer()
+    try:
+        client = GreennodeVdbOpenSearchClient(_live_config(server.url), dimension=4)
+        v1 = _chunk("x::1")
+        v2 = replace(_chunk("y::1"), chunk_id="y::1", knowledge_version="TASK-011H-V2")
+        client.upsert([(v1, [1.0, 0.0, 0.0, 0.0]), (v2, [0.0, 1.0, 0.0, 0.0])])
+        versions = client.knowledge_versions()
+        assert versions == {"TASK-011H-V1": 1, "TASK-011H-V2": 1}
+    finally:
+        server.close()
+
+
+def test_a1_mock_store_knowledge_versions():
+    store = InProcessMockVectorStore()
+    v1 = _chunk("v1::1")
+    v2 = replace(_chunk("v2::1"), chunk_id="v2::1", knowledge_version="TASK-011H-V2")
+    store.upsert([(v1, [0.1, 0.2, 0.3, 0.4]), (v2, [0.2, 0.3, 0.4, 0.5])])
+    assert store.knowledge_versions() == {"TASK-011H-V1": 1, "TASK-011H-V2": 1}
+
+
+def test_a1_live_proof_questions_include_v2_ids():
+    from msb_knowledge_rag.cli import LIVE_PROOF_QUESTIONS
+
+    assert set(LIVE_PROOF_QUESTIONS) >= {
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "D7",
+        "D8",
+        "D9",
+        "D10",
+        "D11",
+    }

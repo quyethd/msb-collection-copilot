@@ -5,12 +5,12 @@ section: roadmap
 topic: ROADMAP
 audience: ALL
 content_type: overview
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Lộ trình và các bước kế tiếp
@@ -24,29 +24,36 @@ updated_at: 2026-09-05
 - What-if Simulation (clone snapshot + chạy lại cùng engine).
 - GreenNode Agent (AgentBase + GLM 5.2): Tool Use, Explain, Investigate,
   Simulate.
-- Ứng dụng frontend: Tổng quan, Danh sách ưu tiên, Khách hàng, Tác động dự
-  kiến, Giới thiệu hệ thống, Trợ lý.
-- Foundation Project Knowledge RAG (TASK-011H): kho kiến thức 26 tài liệu +
-  nền tảng RAG với Qwen Flash và triển khai có điều kiện khi có VDB thật.
+- Sản phẩm web theo TASK-011I: landing công khai `/`, đăng nhập demo `/login`,
+  và khu vực ứng dụng gồm Tổng quan, Danh sách ưu tiên, Khách hàng, Tác động
+  dự kiến và Trợ lý trong sidebar.
+- Project Knowledge RAG (TASK-011H): kho kiến thức 26 tài liệu, phiên bản kiến
+  thức TASK-011H-V2.
+- Live RAG trên GreenNode: GreenNode vDB OpenSearch đã provision, ingest/truy xuất
+  live + Qwen Flash trả lời có nguồn (TASK-011H live proof PASS,
+  INFERENCE_ANCHOR=LIVE_GREENNODE_VDB).
 
 ## Hướng phát triển tiếp theo (FUTURE)
 
-- **Outcome feedback**: kết nối kết quả thanh toán thực sự để học và điều
-  chỉnh.
+- **Outcome feedback**: kết nối kết quả thanh toán thực sự để học và điều chỉnh.
 - **Collection pilot + A/B evaluation**: so sánh copilot với baseline trên một
   nhóm pilot.
 - **Learning-to-rank**: xếp hạng dựa trên kết quả quan sát thay vì tĩnh.
 - **Channel optimization**: tối ưu kênh liên hệ trong ngân sách.
 - **Treatment optimization**: tối ưu hành động xử lý.
 - **Portfolio monitoring**: theo dõi danh mục liên tục.
+- **Tích hợp RAG vào Trợ lý production** (COPILOT_INTEGRATION): kết nối lớp
+  kiến thức RAG (TASK-011H-A.1, đã live) vào giao diện Trợ lý — chưa thực hiện
+  (COPILOT_INTEGRATION=NO).
 
 ## Các bước về nền tảng GreenNode
 
-- **Vector Database (vDB)**: cần product-owner approval để provision OpenSearch
-  kNN hoặc PostgreSQL pgvector; sau đó thực hiện ingest thật và "Project
-  Knowledge RAG" qua VDB + MaaS.
-- **Embedding model**: cần một mô hình embedding trên MaaS hoặc tài nguyên
-  embedding được phép; foundation test hiện dùng adapter deterministic local.
+- **Vector Database (vDB)**: đã provision OpenSearch kNN và kết nối thật — ingest
+  + truy xuất live PASS. Bản V2 hiện tại lưu ở index `msb-collection-knowledge-v2`,
+  bản V1 được giữ ở index `msb-collection-knowledge-v1`.
+- **Embedding model**: MaaS chưa có mô hình embedding được cấp phép; hiện dùng
+  mô hình đa ngôn ngữ local (MiniLM-L12, 384 chiều). Có thể chuyển sang
+  GreenNode khi có model embedding trên MaaS.
 
 ## Ghi chú TASK-011H
 

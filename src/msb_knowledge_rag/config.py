@@ -5,8 +5,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-KNOWLEDGE_VERSION = "TASK-011H-V1"
-SOURCE_COMMIT = "44d24e3c3d2c6277ef2a172e5d8548a1a0402277"
+KNOWLEDGE_VERSION = "TASK-011H-V2"
+SOURCE_COMMIT = "617a1ed84e6001155ae87b467bffbf962d3ce3cc"
+V1_KNOWLEDGE_VERSION = "TASK-011H-V1"
+V1_VDB_INDEX = "msb-collection-knowledge-v1"
+V2_VDB_INDEX = "msb-collection-knowledge-v2"
 
 QWEN_FAST_MODEL = "qwen/qwen3.6-flash"
 GLM_MODEL = "z-ai/glm-5.2-hackathon"

@@ -5,12 +5,12 @@ section: architecture
 topic: ARCHITECTURE
 audience: TECH
 content_type: technical
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Kiến trúc hệ thống
@@ -24,13 +24,27 @@ nghiệp vụ, lấy quyết định từ Decision Core rồi giải thích dự
 
 ## Các lớp
 
-1. **FRONTEND** — Tổng quan, Danh sách ưu tiên, Khách hàng, Tác động dự kiến,
-   Giới thiệu hệ thống, Trợ lý.
-2. **API / DEMO LAYER** — Customer 360, Portfolio, Timeline, Events, Impact.
+1. **FRONTEND** — Ứng dụng (sau đăng nhập): Tổng quan, Danh sách ưu tiên, Khách
+   hàng, Tác động dự kiến, Trợ lý trong sidebar. Trang công khai: landing `/`,
+   đăng nhập demo `/login`.
+2. **API / DEMO LAYER** — Customer 360, Portfolio, Timeline, Events, Impact,
+   demo auth `/demo/auth/login`.
 3. **DETERMINISTIC DECISION CORE** — Policy, Recovery Score, NBA, Simulation.
 4. **GRENNODE AGENT** — Tool Use, Explain, Investigate, Simulate, Summary.
 5. **DATA / CONTEXT** — Customer, Loan, Cashflow, PTP, Call history (dữ liệu mô
-   phỏng).
+   phỏng). Vector kho kiến thức dự án lưu tại **GreenNode vDB OpenSearch**.
+
+## Kiến thức RAG trên GreenNode vDB
+
+- Kho kiến thức dự án (phiên bản **TASK-011H-V2**) được lưu dưới dạng vector
+  trong index vDB OpenSearch của GreenNode (kNN, cosine similarity).
+- Truy xuất: câu hỏi được nhúng về vector để tìm các đoạn kiến thức liên quan
+  (chunk); Qwen Flash tổng hợp câu trả lời có nguồn từ các chunk truy xuất được.
+- Embedding chạy **local** (mô hình đa ngôn ngữ MiniLM-L12, 384 chiều); MaaS
+  hiện không có mô hình embedding để cấp phép.
+- Đã kiểm chứng live: ingest và truy xuất trên GreenNode vDB thật
+  (TASK-011H live proof). RAG chưa tích hợp vào giao diện Trợ lý production
+  (COPILOT_INTEGRATION=NO).
 
 ## Decision Core
 
@@ -67,3 +81,5 @@ nghiệp vụ, lấy quyết định từ Decision Core rồi giải thích dự
 - GreenNode không phải yếu tố trang trí: Agent dùng để tương tác tự nhiên, chọn
   công cụ, giải thích có căn cứ, điều tra và mô phỏng — còn quyết định thu hồi
   vẫn do engine deterministic nắm giữ.
+- RAG không tự quyết định khách hàng thuộc tuyến CALL hay CBS: tuyến xử lý do
+  Decision Core xác định từ policy; RAG chỉ truy vấn kiến thức dự án.

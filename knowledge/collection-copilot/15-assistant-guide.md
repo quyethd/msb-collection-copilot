@@ -5,12 +5,12 @@ section: user_guide
 topic: USER_GUIDE
 audience: COLLECTION_OFFICER
 content_type: product_guide
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Hướng dẫn Trợ lý Thu hồi Nợ
@@ -36,18 +36,22 @@ khách hàng hiện có):
 - "Dòng tiền gần đây của khách hàng thế nào?"
 - "Nếu dòng tiền 7 ngày bằng 0 thì quyết định có thay đổi không?"
 
-## Hướng phát triển (TASK-011H)
+## Lớp kiến thức (TASK-011H live)
 
-Trợ lý được định hướng mở rộng sang hai lớp câu hỏi:
+Trợ lý có hai lớp câu hỏi:
 
 1. **Hỏi về quyết định** — Decision Core xác định hành động, GreenNode AI giải
    thích.
 2. **Hỏi về nghiệp vụ / cách sử dụng sản phẩm** — GreenNode Vector Database
-   tìm tài liệu liên quan, Qwen Flash trả lời dựa trên nguồn.
+   (OpenSearch) tìm tài liệu liên quan trong kho kiến thức dự án, Qwen Flash
+   trả lời dựa trên nguồn.
 
-Lớp kiến thức này chưa được kết nối chính thức vào giao diện Trợ lý trong
-TASK-011H (bản TASK-011G đang được phát triển song song); TASK-011H cung cấp
-nền tảng RAG có thể tích hợp sau.
+Lớp kiến thức RAG đã được kiểm chứng **chạy thật** trên GreenNode vDB
+(TASK-011H live proof, INFERENCE_ANCHOR=LIVE_GREENNODE_VDB): ingest và truy
+xuất live, câu trả lời Qwen Flash có nguồn (citation). Phiên bản kiến thức
+hiện tại là **TASK-011H-V2**. RAG **chưa được tích hợp vào giao diện Trợ lý
+production** (COPILOT_INTEGRATION=NO) — đây là nền tảng sẵn sàng để tích hợp
+trong bước tiếp theo.
 
 ## Ranh giới an toàn
 

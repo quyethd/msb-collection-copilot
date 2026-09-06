@@ -5,12 +5,12 @@ section: golden_qa
 topic: EVALUATION
 audience: TECH
 content_type: technical
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Golden questions và danh mục mô phỏng
@@ -23,7 +23,8 @@ Bộ golden questions dùng để đánh giá chất lượng RAG: truy vết đ
 
 ## Cấu trúc golden questions (TASK-011H)
 
-Kho golden questions cho RAG gồm khoảng 20-25 câu hỏi chia bốn nhóm:
+Kho golden questions cho RAG gồm các câu hỏi chia bốn nhóm A/B/C/D cùng nhóm
+ranh giới (BOUNDARY) và bảo mật (SECURITY):
 
 - **Nhóm A — Nghiệp vụ (Business)**: hành vi của hệ thống, quyết định, tuyến
   CALL/CBS, treatment, PTP.

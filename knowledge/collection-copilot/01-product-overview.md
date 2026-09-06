@@ -5,12 +5,12 @@ section: product_overview
 topic: PRODUCT
 audience: ALL
 content_type: overview
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # Tổng quan sản phẩm
@@ -24,6 +24,18 @@ nên xử lý trước, vì sao, hành động nào phù hợp và thời điể
 Thông điệp cốt lõi:
 
 > Không tìm khách hàng nợ nhiều nhất. Tìm cơ hội thu hồi tốt nhất tiếp theo.
+
+## Cấu trúc sản phẩm hiện tại
+
+Sản phẩm gồm ba phần chính:
+
+1. **Trang giới thiệu sản phẩm (landing)** — ở đường dẫn gốc `/`, công khai,
+   hiển thị trước khi đăng nhập, giải thích bài toán, giá trị, kiến trúc và độ
+   tin cậy. CTA chính: **Đăng nhập hệ thống**.
+2. **Trang đăng nhập demo** — ở `/login`, cho phép vào bản demo bằng tài khoản
+   demo do team cung cấp (bản demo dùng dữ liệu mô phỏng).
+3. **Khu vực ứng dụng (sau đăng nhập)** — gồm Tổng quan, Danh sách ưu tiên,
+   Khách hàng, Tác động dự kiến và Trợ lý Thu hồi Nợ trong sidebar.
 
 ## Lời hứa giá trị
 
@@ -50,8 +62,13 @@ không tự thay đổi quyết định nghiệp vụ, không tự tạo dữ li
 ## Nền tảng
 
 Sản phẩm được xây dựng trên nền GreenNode AI: AgentBase điều phối công cụ
-nghiệp vụ, MaaS cung cấp mô hình ngôn ngữ, và Vector Database dự kiến là lớp
-kiến thức dự án. Quyết định thu hồi luôn thuộc về Decision Core deterministic.
+nghiệp vụ, MaaS cung cấp mô hình ngôn ngữ (GLM 5.2, Qwen Flash), và Vector
+Database (vDB OpenSearch) lưu và truy xuất vector kho tri thức dự án. Kho tri
+thức hiện tại chạy thật trên GreenNode vDB (TASK-011H live proof), phiên bản
+kiến thức **TASK-011H-V2**. Embedding dùng mô hình đa ngôn ngữ local
+(MiniLM-L12), không chạy trên MaaS. Quyết định thu hồi luôn thuộc về Decision
+Core deterministic; RAG chỉ truy xuất kiến thức, chưa tích hợp vào Trợ lý
+production (COPILOT_INTEGRATION=NO).
 
 ## Bản demo
 

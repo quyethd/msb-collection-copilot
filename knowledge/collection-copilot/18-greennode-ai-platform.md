@@ -5,12 +5,12 @@ section: greennode_platform
 topic: GRENNODE
 audience: TECH
 content_type: technical
-knowledge_version: TASK-011H-V1
-source_commit: 44d24e3c3d2c6277ef2a172e5d8548a1a0402277
+knowledge_version: TASK-011H-V2
+source_commit: 617a1ed84e6001155ae87b467bffbf962d3ce3cc
 source_type: curated
 prototype_status: PROTOTYPE
 implementation_status: IMPLEMENTED
-updated_at: 2026-09-05
+updated_at: 2026-09-06
 ---
 
 # GreenNode AI Platform
@@ -33,14 +33,32 @@ nền tảng AI cung cấp nhiều thành phần:
   business tool `get_next_best_action`, giữ nguyên quyết định deterministic.
 - **MaaS**: kết nối thật với mô hình `z-ai/glm-5.2-hackathon` (GLM 5.2) cho
   đường giải thích quyết định.
-- **Qwen Flash**: mô hình `qwen/qwen3.6-flash` đang sẵn sàng trong catalog MaaS
-  của tài khoản. Chỉ khẳng định dùng cho RAG sản xuất **sau khi** có bằng chứng
-  TASK-011H live.
-- **Vector Database**: nền GreenNode cung cấp khả năng vector qua vDB OpenSearch
-  (kNN plugin) và PostgreSQL (pgvector). Chỉ khẳng định dùng cho RAG dự án
-  **sau khi** được cấp phép provision và có bằng chứng live.
+- **Qwen Flash**: mô hình `qwen/qwen3.6-flash` tổng hợp câu trả lời RAG có nguồn
+  từ evidence truy xuất trên GreenNode vDB; đã kiểm chứng live trong
+  TASK-011H live proof.
+- **Vector Database (vDB OpenSearch)**: đã được provisioning và kết nối thật —
+  endpoint OpenSearch có plugin kNN, TLS + xác thực; kho kiến thức dự án được
+  ingest live và truy xuất live. Phiên bản hiện tại **TASK-011H-V2** lưu trong
+  index `msb-collection-knowledge-v2`; index phiên bản V1
+  (`msb-collection-knowledge-v1`) được giữ nguyên (V1_PRESERVED). RAG chưa tích
+  hợp vào Trợ lý production (COPILOT_INTEGRATION=NO).
 
-## Mô hình sẵn có trên tài khoản (catalog MaaS)
+## Hiện trạng live (TASK-011H live proof)
+
+- Live ingest: toàn bộ kho kiến thức (phiên bản TASK-011H-V2) được nhúng bằng
+  mô hình đa ngôn ngữ local và upsert vào index vDB OpenSearch của GreenNode.
+- Live retrieval: truy vấn kNN trên OpenSearch trả về các chunk liên quan; score
+  cosine được tính chuẩn hoá để so sánh ngưỡng đã hiệu chỉnh.
+- Live Qwen RAG: Qwen Flash `qwen/qwen3.6-flash` trả lời dựa trên evidence truy
+  xuất được, kèm citation tới các tài liệu nguồn.
+- Kết quả live proof: R@3 = 1.0, MRR = 0.8974, các cổng live đều PASS,
+  INFERENCE_ANCHOR = LIVE_GREENNODE_VDB.
+- RAG chạy trên GreenNode vDB đã có bằng chứng live, nhưng việc khẳng định dùng
+  Qwen Flash cho RAG trong môi trường sản xuất (production) chỉ được thực hiện
+  sau khi có kế hoạch tích hợp vào giao diện Trợ lý chính thức. Hiện tại RAG
+  chưa tích hợp production (COPILOT_INTEGRATION=NO, DEPLOY=NO).
+
+## Embedding cho RAG
 
 Catalog MaaS hiện có ba mô hình chat:
 
@@ -48,10 +66,11 @@ Catalog MaaS hiện có ba mô hình chat:
 - `qwen/qwen3.6-flash`
 - `google/gemma-4-31b-it`
 
-Trên catalog hiện tại **không có** mô hình embedding sẵn sàng (lời gọi
-`/embeddings` với các mô hình chat trả về model-not-found). Do đó embedding
-cho RAG cần một mô hình embedding được cấp phép riêng, hoặc dùng adapter local
-cho bằng chứng foundation.
+Trên catalog hiện tại **không có** mô hình embedding sẵn sàng. Do đó embedding
+cho RAG chạy **local** bằng mô hình đa ngôn ngữ
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (384 chiều) —
+đây không phải dịch vụ embedding do GreenNode host. Khi có mô hình embedding
+được cấp phép trên MaaS, có thể chuyển đường embedding sang GreenNode.
 
 ## Định hướng kiến trúc
 
@@ -68,11 +87,14 @@ cho bằng chứng foundation.
      Decision Core
 ```
 
-Các thành phần trạng thái "sẽ bổ sung" (Qwen Flash cho knowledge, VDB cho
-knowledge RAG) chỉ thể hiện như đã triển khai trên giao diện chính thức sau khi
-có bằng chứng live.
+Qwen Flash (knowledge) và VDB (Project Knowledge RAG) đã được kiểm chứng
+**chạy thật** (TASK-011H live proof) với INFERENCE_ANCHOR=LIVE_GREENNODE_VDB;
+việc tích hợp vào giao diện Trợ lý production là bước tiếp theo riêng
+(COPILOT_INTEGRATION=NO).
 
 ## Ranh giới
 
 GreenNode không sở hữu quyết định thu hồi. AI hỗ trợ hiểu quyết định, không
-thay đổi quyết định nghiệp vụ.
+thay đổi quyết định nghiệp vụ. Kho kiến thức RAG chỉ truy vấn tài liệu, không
+tự quyết định khách hàng thuộc tuyến CALL hay CBS — tuyến xử lý do Decision Core
+xác định từ policy.

@@ -12,8 +12,10 @@ import {
   benefitCards,
   brand,
   faqs,
+  greenNodeStory,
   hero,
   heroExample,
+  knowledgeAssistant,
   moduleCards,
   modules,
   nbaActions,
@@ -22,6 +24,7 @@ import {
   ptpPrecedence,
   routingNote,
   ruleLayers,
+  sampleQuestions,
   scoring,
   steps,
   team,
@@ -157,20 +160,25 @@ describe('TASK-011F system overview page', () => {
     expect(html).not.toMatch(/NBA-\d{3}/);
   });
 
-  it('contains the architecture section with layer labels', () => {
+  it('contains the architecture section with separated decision and knowledge paths', () => {
     expect(html).toContain(architecture.title);
     expect(html).toContain(architecture.intro);
     expect(html).toContain('GreenNode không phải yếu tố trang trí');
     expect(html).toContain(architecture.coreLabel);
     expect(html).toContain('là nguồn quyết định nghiệp vụ.');
     expect(html).toContain(architecture.agentLabel);
-    expect(html).toContain('là lớp tương tác, điều phối công cụ nghiệp vụ và giải thích.');
-    for (const layer of [architecture.frontend, architecture.api, architecture.core, architecture.agent, architecture.data]) {
+    expect(html).toContain(pipeline.agentStatement);
+    for (const layer of [architecture.frontend, architecture.api, architecture.customerPath, architecture.knowledgePath]) {
       expect(html).toContain(layer.title);
       for (const item of layer.items) {
         expect(html).toContain(item);
       }
     }
+    expect(html).toContain(architecture.decisionPathLabel);
+    expect(html).toContain(architecture.knowledgePathLabel);
+    expect(html).toContain(architecture.pathNote);
+    expect(html).toContain('GreenNode Vector Database');
+    expect(html).toContain('Qwen Flash');
   });
 
   it('shows code module cards', () => {
@@ -206,19 +214,53 @@ describe('TASK-011F system overview page', () => {
     expect(html).toContain('Quyết định Deterministic');
     expect(html).toContain('Đã kiểm tra Prompt Injection');
     expect(html).toContain('Không lộ lý do suy luận');
-    expect(html).toContain('Đã kiểm chứng AgentBase kết nối công cụ quyết định và giữ nguyên kết quả nghiệp vụ.');
+    expect(html).not.toContain('Đã kiểm chứng AgentBase kết nối công cụ quyết định và giữ nguyên kết quả nghiệp vụ.');
+    expect(html).toContain('Đã kiểm chứng kết nối GreenNode Vector Database và truy xuất kho kiến thức (RAG) trên môi trường demo / live proof.');
     expect(html).toContain('Lý do suy luận nội bộ không được tiết lộ.');
+    expect(html).toContain('Trả lời kiến thức có nguồn (RAG)');
     expect(html).not.toMatch(/AgentBase[\s\S]{0,40}PASS/i);
     expect(html).not.toContain('Đang hoàn thiện kiểm chứng AgentBase');
+  });
+
+  it('shows the knowledge-assistant section with two separated lanes', () => {
+    expect(html).toContain(knowledgeAssistant.title);
+    expect(html).toContain(knowledgeAssistant.intro);
+    expect(html).toContain(knowledgeAssistant.trustMessage);
+    expect(html).toContain(knowledgeAssistant.decision.title);
+    expect(html).toContain(knowledgeAssistant.knowledge.title);
+    expect(html).toContain(knowledgeAssistant.sources);
+    for (const example of [...knowledgeAssistant.decision.examples, ...knowledgeAssistant.knowledge.examples]) {
+      expect(html.replace(/&quot;/g, '')).toContain(example.replace(/"/g, ''));
+    }
+  });
+
+  it('makes GreenNode AI, Qwen Flash, vDB and local embedding visible', () => {
+    for (const component of greenNodeStory.components) {
+      expect(html).toContain(component.title);
+      expect(html).toContain(component.detail);
+    }
+    expect(html).toContain('Qwen Flash');
+    expect(html).toContain('GreenNode Vector Database');
+    expect(html).toContain('Nhúng đa ngôn ngữ cục bộ');
+    expect(html).toContain('Nền Tảng AI GreenNode');
+  });
+
+  it('keeps the 14 shared sample questions incl. knowledge suggestions', () => {
+    expect(sampleQuestions.questions).toHaveLength(14);
+    expect(html).toContain('CALL và CBS khác nhau thế nào?');
+    expect(html).toContain('GreenNode AI đóng vai trò gì trong hệ thống?');
+    expect(html).toContain('Điểm Cơ hội thu hồi được tính như thế nào?');
+    expect(html).toContain('Trợ lý có tự quyết định phương án xử lý không?');
   });
 
   it('shows operator questions and FAQ', () => {
     expect(html).toContain('Bạn có thể hỏi Trợ lý điều gì?');
     expect(html).toContain('Tại sao hôm nay chưa nên gọi khách hàng này?');
-    expect(faqs).toHaveLength(7);
+    expect(faqs).toHaveLength(9);
+    const plain = html.replace(/&quot;/g, '');
     for (const faq of faqs) {
-      expect(html).toContain(faq.question);
-      expect(html).toContain(faq.answer.length > 3 ? faq.answer : faq.question);
+      expect(plain).toContain(faq.question.replace(/"/g, ''));
+      expect(plain).toContain(faq.answer.length > 3 ? faq.answer.replace(/"/g, '') : faq.question);
     }
   });
 

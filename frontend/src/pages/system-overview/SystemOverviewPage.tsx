@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Ban,
+  BookOpen,
   Bot,
   Box,
   CalendarDays,
@@ -42,6 +43,7 @@ import {
   faqs,
   finalCta,
   greenNodeStory,
+  knowledgeAssistant,
   hero,
   heroExample,
   moduleCards,
@@ -460,26 +462,23 @@ export function SystemOverviewPage({
               </ul>
             </div>
             <div className="so-arch-arrow" aria-hidden="true"><ArrowDown size={18} /></div>
-            <div className="so-arch-core" role="group" aria-label="Bộ máy quyết định theo quy tắc">
-              <div className="so-arch-layer-title"><Cpu size={16} /> {architecture.core.title}</div>
-              <ul className="so-arch-items so-arch-items-cols">
-                {architecture.core.items.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            </div>
-            <div className="so-arch-branches">
-              <div className="so-arch-branch so-arch-branch-left" role="group" aria-label="GreenNode Agent">
-                <div className="so-arch-layer-title"><Bot size={16} /> {architecture.agent.title}</div>
+            <div className="so-arch-paths">
+              <div className="so-arch-path so-arch-path-decision" role="group" aria-label={architecture.customerPath.title}>
+                <div className="so-arch-path-head"><Cpu size={16} /><span><b>{architecture.decisionPathLabel}</b><small>{architecture.customerPath.title}</small></span></div>
+                <p className="so-arch-path-intro">{architecture.customerPath.intro}</p>
                 <ul className="so-arch-items">
-                  {architecture.agent.items.map((item) => <li key={item}>{item}</li>)}
+                  {architecture.customerPath.items.map((item) => <li key={item}>{item}</li>)}
                 </ul>
               </div>
-              <div className="so-arch-branch so-arch-branch-right" role="group" aria-label="Data / Context">
-                <div className="so-arch-layer-title"><Database size={16} /> {architecture.data.title}</div>
+              <div className="so-arch-path so-arch-path-knowledge" role="group" aria-label={architecture.knowledgePath.title}>
+                <div className="so-arch-path-head"><BookOpen size={16} /><span><b>{architecture.knowledgePathLabel}</b><small>{architecture.knowledgePath.title}</small></span></div>
+                <p className="so-arch-path-intro">{architecture.knowledgePath.intro}</p>
                 <ul className="so-arch-items">
-                  {architecture.data.items.map((item) => <li key={item}>{item}</li>)}
+                  {architecture.knowledgePath.items.map((item) => <li key={item}>{item}</li>)}
                 </ul>
               </div>
             </div>
+            <p className="so-arch-path-note"><ShieldCheck size={14} /> {architecture.pathNote}</p>
           </div>
         </section>
 
@@ -541,6 +540,28 @@ export function SystemOverviewPage({
             <ShieldCheck size={15} />
             {aiRole.safetyNote}
           </p>
+        </section>
+
+        <section className="so-section so-knowledge-section" id="knowledge-assistant">
+          <div className="so-section-head">
+            <span className="so-eyebrow">TRỢ LÝ · QUYẾT ĐỊNH VÀ KIẾN THỨC</span>
+            <h2>{knowledgeAssistant.title}</h2>
+            <p>{knowledgeAssistant.intro}</p>
+          </div>
+          <div className="so-knowledge-cols">
+            <article className="so-knowledge-card so-knowledge-decision">
+              <div className="so-knowledge-card-head"><Cpu size={18} /> {knowledgeAssistant.decision.title}</div>
+              <p>{knowledgeAssistant.decision.body}</p>
+              <ul className="so-knowledge-examples">{knowledgeAssistant.decision.examples.map((e) => <li key={e}><MessagesSquare size={13} />{e}</li>)}</ul>
+            </article>
+            <article className="so-knowledge-card so-knowledge-rag">
+              <div className="so-knowledge-card-head"><BookOpen size={18} /> {knowledgeAssistant.knowledge.title}</div>
+              <p>{knowledgeAssistant.knowledge.body}</p>
+              <ul className="so-knowledge-examples">{knowledgeAssistant.knowledge.examples.map((e) => <li key={e}><MessagesSquare size={13} />{e}</li>)}</ul>
+            </article>
+          </div>
+          <p className="so-knowledge-trust"><ShieldCheck size={15} /> {knowledgeAssistant.trustMessage}</p>
+          <p className="so-knowledge-source-note">{knowledgeAssistant.sources}</p>
         </section>
 
         <section className="so-section" id="trust">

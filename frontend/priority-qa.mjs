@@ -2,14 +2,26 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 
 const browser=await chromium.launch({headless:true});
+const context=await browser.newContext();
 const results=[];
+async function login(page) {
+  await page.goto('http://127.0.0.1:5173/login');
+  await page.getByLabel('Tên đăng nhập').fill('admin');
+  await page.getByLabel('Mật khẩu').fill('admin');
+  await page.getByRole('button',{name:/Đăng nhập/}).click();
+  await page.waitForURL(/\/app/);
+}
 try {
+  const loginPage=await context.newPage();
+  await login(loginPage);
+  await loginPage.close();
   for (const [width,height] of [[1366,768],[1440,900],[1920,1080]]) {
-    const page=await browser.newPage({viewport:{width,height}});
+    const page=await context.newPage();
+    await page.setViewportSize({width,height});
     const errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     page.on('console',m=>{if(m.type()==='error') errors.push(m.text())});
-    await page.goto('http://127.0.0.1:5173');
+    await page.goto('http://127.0.0.1:5173/app');
     await page.getByRole('button',{name:'Danh sách ưu tiên',exact:true}).click();
     await page.locator('.priority-page tbody tr').first().waitFor({timeout:120000});
     assert.equal(await page.locator('th').count(),8);

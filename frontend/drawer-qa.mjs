@@ -5,13 +5,17 @@ const browser = await chromium.launch({ headless: true });
 try {
   for (const [width, height] of [[1366, 768], [1440, 900], [1920, 1080]]) {
     const page = await browser.newPage({ viewport: { width, height } });
-    await page.goto('http://127.0.0.1:5173/gioi-thieu');
-    await page.locator('.so-audience-nav').waitFor();
+    await page.goto('http://127.0.0.1:5173/login');
+    await page.getByLabel('Tên đăng nhập').fill('admin');
+    await page.getByLabel('Mật khẩu').fill('admin');
+    await page.getByRole('button', { name: /Đăng nhập/ }).click();
+    await page.waitForURL(/\/app/);
+    await page.locator('.assistant-cta').waitFor();
     await page.locator('.assistant-cta').click();
     await page.locator('.drawer').waitFor();
 
     const layer = await page.evaluate(() => {
-      const nav = document.querySelector('.so-audience-nav');
+      const nav = document.querySelector('.sidebar');
       const backdrop = document.querySelector('.drawer-backdrop');
       const drawer = document.querySelector('.drawer');
       if (!nav || !backdrop || !drawer) throw new Error('drawer fixture missing');
@@ -28,7 +32,7 @@ try {
     });
     assert.ok(layer.backdropZ > layer.navZ, `${width}: backdrop must cover quick-nav`);
     assert.ok(layer.drawerZ > layer.backdropZ, `${width}: drawer must be above backdrop`);
-    assert.equal(layer.pointIsBackdrop, true, `${width}: quick-nav pointer leaked through backdrop`);
+    assert.equal(layer.pointIsBackdrop, true, `${width}: sidebar pointer leaked through backdrop`);
     assert.equal(layer.navPointerEvents, 'auto');
 
     const drawerBox = await page.locator('.drawer').boundingBox();
@@ -40,9 +44,9 @@ try {
 
     assert.equal(await page.locator('.suggestions button:not(.show-more-questions)').count(), 4);
     assert.equal(await page.locator('.suggestions-note').innerText(), 'Đây là câu hỏi gợi ý. Bạn vẫn có thể nhập câu hỏi khác.');
-    await page.getByRole('button', { name: 'Xem thêm 6 câu hỏi', exact: true }).click();
-    assert.equal(await page.locator('.suggestions button:not(.show-more-questions)').count(), 10);
-    assert.equal(new Set(await page.locator('.suggestion-group').allTextContents()).size, 4);
+    await page.getByRole('button', { name: 'Xem thêm 10 câu hỏi', exact: true }).click();
+    assert.equal(await page.locator('.suggestions button:not(.show-more-questions)').count(), 14);
+    assert.equal(new Set(await page.locator('.suggestion-group').allTextContents()).size, 5);
     assert.ok(await page.locator('.drawer textarea').isVisible());
     await page.close();
   }

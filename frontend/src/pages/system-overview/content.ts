@@ -167,12 +167,12 @@ export const pipeline = {
     { title: 'Cơ hội thu hồi (Recovery Opportunity)', detail: 'Điểm cơ hội thu hồi' },
     { title: 'Hành động đề xuất tiếp theo (Next Best Action)', detail: 'Chọn hành động theo mức ưu tiên' },
     { title: 'Kênh và thời điểm', detail: 'Kênh và thời điểm thực hiện' },
-    { title: 'GreenNode Agent', detail: 'Giải thích · Hỏi đáp · Điều tra · Mô phỏng' },
+    { title: 'GreenNode Agent', detail: 'Giải thích · Hỏi đáp · Điều tra · Mô phỏng · Tra cứu kiến thức (RAG)' },
   ],
   coreStatementTitle: 'Bộ máy quyết định (Decision Core)',
   coreStatement: 'theo quy tắc xác định là nguồn quyết định nghiệp vụ.',
   agentStatementTitle: 'GreenNode Agent',
-  agentStatement: 'là lớp tương tác, điều phối công cụ nghiệp vụ và giải thích.',
+  agentStatement: 'là lớp tương tác, điều phối công cụ nghiệp vụ, giải thích và tra cứu kiến thức hệ thống.',
 };
 
 export const ruleLayers = {
@@ -232,10 +232,20 @@ export const architecture = {
   agentLabel: 'Trợ lý GreenNode',
   agentState: '= Lớp tương tác và điều phối',
   frontend: { title: 'Giao diện người dùng', items: ['Tổng quan', 'Danh sách ưu tiên', 'Khách hàng', 'Tác động dự kiến'] },
-  api: { title: 'Lớp API / bản demo', items: ['Thông tin khách hàng', 'Danh mục', 'Lịch sử thay đổi', 'Sự kiện', 'Tác động'] },
-  core: { title: 'Bộ máy quyết định theo quy tắc', items: ['Chính sách', 'Điểm cơ hội thu hồi', 'Hành động đề xuất', 'Mô phỏng'] },
-  agent: { title: 'Trợ lý GreenNode', items: ['Sử dụng công cụ', 'Giải thích', 'Điều tra', 'Mô phỏng', 'Tóm tắt'] },
-  data: { title: 'Dữ liệu / ngữ cảnh', items: ['Khách hàng', 'Khoản vay', 'Dòng tiền', 'Cam kết thanh toán', 'Lịch sử liên hệ'] },
+  api: { title: 'Lớp API / bản demo', items: ['Thông tin khách hàng', 'Danh mục', 'Lịch sử thay đổi', 'Sự kiện', 'Tác động', 'Trợ lý (quyết định + kiến thức)'] },
+  customerPath: {
+    title: 'Luồng khách hàng / quyết định',
+    intro: 'Câu hỏi về khách hàng đi qua AgentBase tới công cụ nghiệp vụ, lấy quyết định từ Bộ máy quyết định theo quy tắc.',
+    items: ['GreenNode AgentBase (điều phối công cụ)', 'Công cụ nghiệp vụ mô phỏng', 'Bộ máy quyết định theo quy tắc', 'GLM 5.2 (giải thích có bằng chứng)'],
+  },
+  knowledgePath: {
+    title: 'Luồng kiến thức hệ thống',
+    intro: 'Câu hỏi khái niệm được tra cứu trong kho kiến thức GreenNode và trả lời có nguồn tham khảo.',
+    items: ['GreenNode Vector Database', 'Kho kiến thức TASK-011H-V2', 'Qwen Flash (tổng hợp có nguồn)', 'Nhúng đa ngôn ngữ cục bộ'],
+  },
+  decisionPathLabel: 'LUỒNG KHÁCH HÀNG / QUYẾT ĐỊNH',
+  knowledgePathLabel: 'LUỒNG KIẾN THỨC HỆ THỐNG',
+  pathNote: 'Hai luồng tách biệt. Kiến thức hệ thống không quyết định nghiệp vụ và ngược lại.',
 };
 
 export const greenNodeStory = {
@@ -243,10 +253,31 @@ export const greenNodeStory = {
   intro: 'GreenNode hỗ trợ cán bộ truy vấn, điều phối công cụ nghiệp vụ và tạo phần giải thích; Bộ máy quyết định giữ quyền xác định kết quả nghiệp vụ.',
   components: [
     { title: 'GreenNode AgentBase', detail: 'Điều phối Trợ lý với các công cụ nghiệp vụ. Đã được kiểm chứng kết nối công cụ quyết định và giữ nguyên kết quả nghiệp vụ.' },
-    { title: 'Dịch vụ mô hình AI GreenNode (MaaS)', detail: 'Cung cấp GLM 5.2 cho phần phân tích và giải thích phức tạp.' },
+    { title: 'Dịch vụ mô hình AI GreenNode (MaaS)', detail: 'Cung cấp GLM 5.2 cho phân tích và giải thích phức tạp, Qwen Flash cho câu trả lời kiến thức có nguồn.' },
     { title: 'GLM 5.2', detail: 'Hỗ trợ tạo phần giải thích dựa trên kết quả nghiệp vụ đã được xác nhận.' },
+    { title: 'Qwen Flash', detail: 'Tổng hợp câu trả lời kiến thức hệ thống (RAG) dựa duy nhất trên các đoạn tài liệu được truy xuất.' },
+    { title: 'GreenNode Vector Database', detail: 'Cơ sở dữ liệu véc-tơ lưu kho kiến thức phiên bản TASK-011H-V2 và truy xuất câu trả lời có nguồn tham khảo.' },
+    { title: 'Nhúng đa ngôn ngữ cục bộ', detail: 'Mô hình nhúng véc-tơ đa ngôn ngữ chạy cục bộ (local multilingual embedding) để tra cứu theo nghĩa, véc-tơ không nằm trong đường quyết định.' },
     { title: 'Bộ máy quyết định (Decision Core)', detail: 'Không phải mô hình ngôn ngữ. Giữ quyền xác định tuyến, điểm, hành động và kênh xử lý.' },
   ],
+};
+
+export const knowledgeAssistant = {
+  title: 'Trợ Lý Hiểu Cả Quyết Định Và Kiến Thức Hệ Thống',
+  intro: 'Trợ lý trả lời theo hai luồng tách biệt. Luồng quyết định và khách hàng dùng công cụ nghiệp vụ truy vấn Bộ máy quyết định. Luồng kiến thức hệ thống tra cứu kho kiến thức GreenNode và tổng hợp đáp án có nguồn tham khảo.',
+  trustMessage:
+    'GreenNode AI hỗ trợ phân tích, giải thích và tra cứu kiến thức. Bộ máy quyết định giữ quyền xác định kết quả nghiệp vụ.',
+  decision: {
+    title: 'Luồng quyết định và khách hàng',
+    body: 'Câu hỏi về một khách hàng (tuyến, điểm, hành động, dòng tiền, cam kết, mô phỏng) được điều phối qua AgentBase tới công cụ nghiệp vụ đã chấp nhận; kết quả lấy từ Bộ máy quyết định theo quy tắc và GLM 5.2 tạo phần giải thích.',
+    examples: ['"Tại sao hôm nay chưa nên gọi khách hàng này?"', '"SYN002846 thuộc CALL hay CBS?"', '"Nếu dòng tiền 7 ngày bằng 0 thì sao?"'],
+  },
+  knowledge: {
+    title: 'Luồng kiến thức hệ thống',
+    body: 'Câu hỏi khái niệm (CALL/CBS, Điểm Cơ hội thu hồi, vai trò GreenNode, RAG...) được nhúng véc-tơ, tra cứu trong kho kiến thức TASK-011H-V2 vào GreenNode Vector Database, rồi Qwen Flash tổng hợp câu trả lời kèm nguồn tham khảo.',
+    examples: ['"CALL và CBS khác nhau thế nào?"', '"Điểm Cơ hội thu hồi được tính như thế nào?"', '"Trợ lý có tự quyết định phương án xử lý không?"'],
+  },
+  sources: 'Kho kiến thức chỉ trả lời khi tìm thấy đoạn tài liệu đủ đáng tin. Trường hợp không đủ thông tin, Trợ lý nói rõ thay vì bịa dựng.',
 };
 
 export const modules = {
@@ -286,6 +317,7 @@ export const aiRole = {
     'Điều tra ngữ cảnh khách hàng',
     'Mô phỏng tình huống',
     'Tóm tắt trạng thái',
+    'Tra cứu kho kiến thức hệ thống có nguồn tham khảo',
   ],
   cannot: [
     'Thay đổi quyết định của chính sách',
@@ -293,12 +325,13 @@ export const aiRole = {
     'Tự tạo dữ liệu khách hàng',
     'Tự tạo cam kết thanh toán',
     'Bịa số liệu dòng tiền',
+    'Dùng kho kiến thức để quyết định nghiệp vụ khách hàng',
     'Tiết lộ lý do suy luận nội bộ',
   ],
 };
 
 export const trust = {
-  title: 'Quyết định có thể kiểm chứng',
+  title: 'Quyết định và trả lời có thể kiểm chứng',
   badges: [
     'Quyết định Deterministic',
     'Truy vết quy tắc (Rule Trace)',
@@ -307,6 +340,7 @@ export const trust = {
     'CIF chưa biết an toàn',
     'Đã kiểm tra Prompt Injection',
     'Không lộ lý do suy luận',
+    'Trả lời kiến thức có nguồn (RAG)',
   ],
   points: [
     'Quyết định nghiệp vụ đến từ các quy tắc deterministic.',
@@ -314,8 +348,10 @@ export const trust = {
     'Khách hàng chưa biết không bị bịa dựng thông tin.',
     'Yêu cầu can thiệp không làm thay đổi quyết định nghiệp vụ đã chấp nhận.',
     'Lý do suy luận nội bộ không được tiết lộ.',
+    'Yêu cầu bí mật (API key, mật khẩu, nội dung kho nội bộ) bị chặn.',
+    'Câu trả lời kiến thức chỉ xuất hiện khi truy xuất được đoạn tài liệu đủ đáng tin, kèm nguồn tham khảo.',
   ],
-  status: 'Đã kiểm chứng AgentBase kết nối công cụ quyết định và giữ nguyên kết quả nghiệp vụ.',
+  status: 'Đã kiểm chứng kết nối GreenNode Vector Database và truy xuất kho kiến thức (RAG) trên môi trường demo / live proof.',
 };
 
 export const dayTimeline = {
@@ -331,7 +367,7 @@ export const dayTimeline = {
 
 export const sampleQuestions = {
   title: 'Bạn có thể hỏi Trợ lý điều gì?',
-  note: 'Các câu hỏi dưới đây là ví dụ. Từ trang Tổng quan, Trợ lý trả lời dựa trên quyết định đã được xác định và dữ liệu khách hàng hiện có.',
+  note: 'Các câu hỏi dưới đây là ví dụ. Với khách hàng, Trợ lý trả lời dựa trên quyết định đã được xác định và dữ liệu hiện có. Với khái niệm hệ thống, Trợ lý tra cứu kho kiến thức GreenNode và trả lời có nguồn tham khảo.',
   questions: [
     ...assistantQuestionCatalog.map(({ question }) => question),
   ],
@@ -370,13 +406,23 @@ export const faqs: { question: string; answer: string }[] = [
     answer:
       'Bộ máy quy tắc đảm bảo quyết định nghiệp vụ nhất quán và kiểm soát được. GreenNode Agent giúp cán bộ truy vấn, điều tra, tổng hợp bằng chứng, giải thích và mô phỏng quyết định bằng ngôn ngữ tự nhiên mà không cần đọc thủ công nhiều trường dữ liệu.',
   },
+  {
+    question: 'Trợ lý có trả lời câu hỏi khái niệm như "CALL và CBS khác nhau thế nào?" không?',
+    answer:
+      'Có. Đây là câu hỏi kiến thức hệ thống. Trợ lý nhúng câu hỏi, tra cứu trong kho kiến thức GreenNode phiên bản TASK-011H-V2 và tổng hợp câu trả lời bằng Qwen Flash kèm nguồn tham khảo. Trường hợp không truy xuất được đoạn tài liệu đủ đáng tin, Trợ lý thừa nhận không đủ thông tin.',
+  },
+  {
+    question: 'Trợ lý trả lời kiến thức hệ thống có quyết định nghiệp vụ không?',
+    answer:
+      'Không. Luồng kiến thức hệ thống và luồng quyết định khách hàng tách biệt. Quyết định nghiệp vụ chỉ đến từ Bộ máy quyết định theo quy tắc.',
+  },
 ];
 
 export const roadmap = {
   title: 'Lộ trình sản phẩm',
   current: {
     label: 'Đã có trong bản demo',
-    items: ['Năng lực quyết định', 'CALL / CBS', 'Cơ hội thu hồi', 'Hành động đề xuất tiếp theo', 'Mô phỏng tình huống', 'Trợ lý GreenNode'],
+    items: ['Năng lực quyết định', 'CALL / CBS', 'Cơ hội thu hồi', 'Hành động đề xuất tiếp theo', 'Mô phỏng tình huống', 'Trợ lý GreenNode', 'Tra cứu kiến thức hệ thống (RAG) có nguồn'],
   },
   future: {
     label: 'Hướng phát triển tiếp theo',

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 import unicodedata
 from typing import Any, Callable
@@ -18,10 +19,24 @@ from .models import decision_from_nba
 
 ToolCaller = Callable[[str, dict[str, Any]], dict[str, Any]]
 INTENTS = (
-    "GREETING_HELP", "CUSTOMER_SUMMARY", "CASHFLOW", "PTP",
+    "GREETING_HELP", "KNOWLEDGE", "CUSTOMER_SUMMARY", "CASHFLOW", "PTP",
     "ROUTE_PRIORITY", "DECISION_EXPLANATION", "SIMULATION", "OUT_OF_SCOPE",
 )
 _DECISION_WORDS = ("tai sao", "sao ", "nen goi", "chua goi", "chua nen", "goi ngay", "de xuat", "hanh dong", "xu ly sao", "bo qua de xuat")
+# Concept questions ("... là gì?", "... dùng để làm gì?", "... khác nhau thế nào?")
+# route to the Project Knowledge RAG. They deliberately never match customer
+# phrasing: "Dòng tiền SYN002846 hiện thế nào?" keeps its CIF-bound intent.
+_KNOWLEDGE_MARKERS = (
+    "la gi", "de lam gi", "dong vai tro", "khac nhau the nao", "khac nhau nhu the nao",
+    "nam o dau", "chay o dau", "duoc tinh nhu the nao", "duoc tinh the nao",
+    "tu quyet dinh", "tu dua ra quyet dinh", "ai quyet dinh", "quyen quyet dinh",
+    "nghia la",
+)
+_SECURITY_WORDS = (
+    "api_key", "api key", "llm_api_key", "client_secret", "client secret",
+    ".env", "password", "mat khau", "credentials", "credential",
+    "reasoning_content", "private prompt", "internal endpoint",
+)
 
 
 def _plain(value: str) -> str:
@@ -35,6 +50,10 @@ def classify_intent(message: str) -> tuple[str, float, str]:
         return "OUT_OF_SCOPE", 1.0, "deterministic"
     if any(x in text for x in ("xin chao", "hello", "ban lam gi duoc", "tro giup", "help")) or re.search(r"^hi(?:[ !,.]|$)", text):
         return "GREETING_HELP", 0.99, "deterministic"
+    if any(x in text for x in _SECURITY_WORDS):
+        return "OUT_OF_SCOPE", 0.99, "deterministic"
+    if any(x in text for x in _KNOWLEDGE_MARKERS):
+        return "KNOWLEDGE", 0.97, "deterministic"
     if any(x in text for x in ("neu ", "gia su", "mo phong", "tinh huong", "what if", "thay doi")):
         return "SIMULATION", 0.98, "deterministic"
     if any(x in text for x in ("cam ket", "ptp", "hua tra", "hứa trả")):
@@ -101,6 +120,100 @@ def _response(cif: str, intent: str, summary: str, sections: list[dict[str, Any]
             "metadata": {**timings, "path": path, "intent": intent}}
 
 
+_RAG_LOCK = threading.Lock()
+_RAG_SERVICE = None
+
+
+def _knowledge_service():
+    """Lazy live KnowledgeRagService (GreenNode vDB via config + Qwen Flash
+    answerer). Built once; a failure here fails soft into the standard
+    low-confidence refusal instead of surfacing to the browser."""
+    global _RAG_SERVICE
+    if _RAG_SERVICE is None:
+        with _RAG_LOCK:
+            if _RAG_SERVICE is None:
+                from msb_knowledge_rag.answerer import MaasRagAnswerer
+                from msb_knowledge_rag.config import KnowledgeRagConfig
+                from msb_knowledge_rag.service import KnowledgeRagService
+                config = KnowledgeRagConfig()
+                _RAG_SERVICE = KnowledgeRagService(
+                    config=config, answerer=MaasRagAnswerer(config=config)
+                )
+    return _RAG_SERVICE
+
+
+def _knowledge_response(
+    cif: str, message: str, started: float, confidence: float,
+    classifier: str, router_ms: float,
+) -> dict[str, Any]:
+    """Route a PROJECT_KNOWLEDGE question through the RAG service and map its
+    RagAnswer to the copilot response contract. Sources carry human-readable
+    document title + section; raw vectors/endpoints/credentials never leave the
+    service."""
+    from msb_knowledge_rag.config import LOW_CONFIDENCE_REFUSAL
+    from msb_knowledge_rag.models import RagAnswer
+    service = None
+    try:
+        service = _knowledge_service()
+        answer = service.answer(message)
+    except Exception:
+        answer = RagAnswer(
+            status="LOW_CONFIDENCE",
+            path="rag_qwen",
+            knowledge_type="PROJECT_KNOWLEDGE",
+            answer=LOW_CONFIDENCE_REFUSAL,
+            classification="LOW_CONFIDENCE",
+            sources=[],
+            meta={},
+        )
+    rags = answer.sources or []
+    sections: list[dict[str, Any]] = []
+    if answer.status == "ANSWERED" and answer.answer:
+        sections.append({"title": "Câu trả lời", "content": answer.answer})
+    if rags:
+        sections.append({
+            "title": "Nguồn tham khảo",
+            "items": [
+                f"{index + 1}. {src.get('title', '')} — {src.get('section', '')}"
+                for index, src in enumerate(rags)
+            ],
+        })
+    timings: dict[str, float] = {
+        "router_ms": round(router_ms, 2), "tool_ms": 0.0, "model_ms": 0.0,
+        "classification_ms": 0.0, "embedding_ms": 0.0, "retrieval_ms": 0.0,
+        "knowledge_ms": 0.0,
+        "total_ms": round((time.perf_counter() - started) * 1000, 2),
+    }
+    for key in ("classification_ms", "embedding_ms", "retrieval_ms", "model_ms"):
+        if answer.meta.get(key) is not None:
+            timings[key] = round(float(answer.meta[key]), 3)
+    timings["knowledge_ms"] = round(
+        max(0.0, timings["total_ms"] - timings["router_ms"]), 2
+    )
+    result = _response(
+        cif, "KNOWLEDGE", answer.answer or LOW_CONFIDENCE_REFUSAL, sections,
+        [], None, "RAG_QWEN", timings, None,
+    )
+    result["mode"] = "KNOWLEDGE"
+    result["canonical_model"] = None
+    result["answer"] = answer.answer
+    result["sources"] = rags
+    result["knowledge_type"] = answer.knowledge_type
+    result["knowledge_status"] = answer.status
+    result["metadata"].update({
+        "confidence": confidence,
+        "classifier": classifier,
+        "path": "RAG_QWEN",
+        "intent": "KNOWLEDGE",
+        "knowledge_status": answer.status,
+        "knowledge_type": answer.knowledge_type,
+        "knowledge_version": answer.meta.get("knowledge_version"),
+        "qwen_fast_model": getattr(getattr(service, "config", None), "qwen_fast_model", None),
+        "total_ms": timings["total_ms"],
+    })
+    return result
+
+
 def _simulation_changes(message: str, changes: dict[str, Any]) -> dict[str, Any]:
     result = dict(changes)
     text = _plain(message)
@@ -133,6 +246,9 @@ def route_copilot(payload: dict[str, Any], caller: ToolCaller) -> dict[str, Any]
     if intent == "OUT_OF_SCOPE":
         result = _response(cif, intent, "Tôi chỉ hỗ trợ thông tin và quyết định trong quy trình thu hồi nợ của MSB trên dữ liệu mô phỏng.", [], [], None, "LOCAL", timings, None)
         result["metadata"].update({"confidence": confidence, "classifier": classifier}); result["metadata"]["total_ms"] = round((time.perf_counter()-started)*1000, 2); return result
+
+    if intent == "KNOWLEDGE":
+        return _knowledge_response(cif, message, started, confidence, classifier, router_ms)
 
     tools: list[str] = []; tool_start = time.perf_counter()
     if intent == "SIMULATION":

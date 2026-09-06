@@ -1163,6 +1163,89 @@
   border-left: 3px solid #b8c3d1;
 }
 
+.so-arch-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.so-arch-path {
+  background: #fff;
+  border: 1px solid var(--so-line);
+  border-radius: 12px;
+  box-shadow: var(--so-shadow);
+  padding: 16px 18px;
+}
+
+.so-arch-path-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.so-arch-path-head svg {
+  flex: none;
+  color: var(--so-orange);
+}
+
+.so-arch-path-head b {
+  display: block;
+  color: var(--so-navy);
+  font-size: 12px;
+  letter-spacing: 0.9px;
+}
+
+.so-arch-path-head small {
+  display: block;
+  color: var(--so-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.so-arch-path-intro {
+  color: var(--so-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+.so-arch-path-decision {
+  border-left: 3px solid var(--so-orange);
+}
+
+.so-arch-path-decision .so-arch-path-head b {
+  color: var(--so-orange-dark);
+}
+
+.so-arch-path-knowledge {
+  border-left: 3px solid var(--so-green);
+}
+
+.so-arch-path-knowledge .so-arch-path-head b {
+  color: var(--so-green-dark);
+}
+
+.so-arch-path-note {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--so-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--so-bg-soft);
+  border: 1px dashed var(--so-line-strong);
+  border-radius: 8px;
+  padding: 9px 13px;
+}
+
+.so-arch-path-note svg {
+  color: var(--so-orange);
+}
+
 /* ---------- MODULES ---------- */
 .so-module-grid {
   display: grid;
@@ -1311,6 +1394,100 @@
 .so-ai-note svg {
   flex: none;
   color: var(--so-orange);
+}
+
+/* ---------- KNOWLEDGE ASSISTANT ---------- */
+.so-knowledge-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.so-knowledge-card {
+  background: #fff;
+  border: 1px solid var(--so-line);
+  border-radius: var(--so-radius);
+  box-shadow: var(--so-shadow);
+  padding: 20px;
+}
+
+.so-knowledge-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.so-knowledge-decision {
+  border-left: 3px solid var(--so-orange);
+}
+
+.so-knowledge-decision .so-knowledge-card-head {
+  color: var(--so-orange-dark);
+}
+
+.so-knowledge-rag {
+  border-left: 3px solid var(--so-green);
+}
+
+.so-knowledge-rag .so-knowledge-card-head {
+  color: var(--so-green-dark);
+}
+
+.so-knowledge-card p {
+  color: var(--so-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.so-knowledge-examples {
+  display: grid;
+  gap: 7px;
+  margin-top: 13px;
+  border-top: 1px dashed var(--so-line-strong);
+  padding-top: 13px;
+}
+
+.so-knowledge-examples li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--so-ink);
+  font-size: 12.5px;
+}
+
+.so-knowledge-examples li svg {
+  flex: none;
+  color: var(--so-orange);
+  margin-top: 2px;
+}
+
+.so-knowledge-trust {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--so-orange-soft);
+  border: 1px solid #f2d4b9;
+  color: #a94d0b;
+  font-size: 13px;
+  font-weight: 650;
+  border-radius: 9px;
+  padding: 11px 15px;
+}
+
+.so-knowledge-trust svg {
+  flex: none;
+  color: var(--so-orange);
+}
+
+.so-knowledge-source-note {
+  margin-top: 10px;
+  color: var(--so-muted);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 /* ---------- TRUST ---------- */
@@ -1769,12 +1946,14 @@
   .so-example-grid,
   .so-whww,
   .so-ai-cols,
+  .so-knowledge-cols,
   .so-module-grid,
   .so-rules,
   .so-trust-grid,
   .so-question-grid,
   .so-roadmap,
   .so-arch-branches,
+  .so-arch-paths,
   .so-pipeline-statements,
   .so-final-buttons {
     grid-template-columns: 1fr;

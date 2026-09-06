@@ -1,4 +1,4 @@
-export type AssistantQuestionGroup = 'Quyết định' | 'Dòng tiền & cam kết' | 'Mô phỏng tình huống' | 'Tuyến xử lý & ưu tiên';
+export type AssistantQuestionGroup = 'Quyết định' | 'Dòng tiền & cam kết' | 'Mô phỏng tình huống' | 'Tuyến xử lý & ưu tiên' | 'Kiến thức sản phẩm';
 
 export const assistantQuestionCatalog: { question: string; group: AssistantQuestionGroup }[] = [
   { question: 'Tại sao hôm nay chưa nên gọi khách hàng này?', group: 'Quyết định' },
@@ -11,6 +11,10 @@ export const assistantQuestionCatalog: { question: string; group: AssistantQuest
   { question: 'Khách hàng này đang thuộc CALL hay CBS?', group: 'Tuyến xử lý & ưu tiên' },
   { question: 'Tại sao hệ thống đề xuất chờ thay vì liên hệ?', group: 'Quyết định' },
   { question: 'Điều gì cần thay đổi để khách hàng được ưu tiên cao hơn?', group: 'Tuyến xử lý & ưu tiên' },
+  { question: 'CALL và CBS khác nhau thế nào?', group: 'Kiến thức sản phẩm' },
+  { question: 'GreenNode AI đóng vai trò gì trong hệ thống?', group: 'Kiến thức sản phẩm' },
+  { question: 'Điểm Cơ hội thu hồi được tính như thế nào?', group: 'Kiến thức sản phẩm' },
+  { question: 'Trợ lý có tự quyết định phương án xử lý không?', group: 'Kiến thức sản phẩm' },
 ];
 
 export const commonAssistantQuestions = assistantQuestionCatalog.slice(0, 4);

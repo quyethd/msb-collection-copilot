@@ -48,9 +48,29 @@ describe('TASK-009 demo UI contract',()=>{
   });
   it('uses one shared question catalog for landing and drawer',()=>{
     expect(source).toContain("import {assistantQuestionCatalog,commonAssistantQuestions} from './assistant-question-catalog';");
-    expect(source).toContain('Xem thêm 6 câu hỏi');
-    expect(readFileSync(resolve(__dirname,'assistant-question-catalog.ts'),'utf8').match(/question: '/g)).toHaveLength(10);
+    expect(source).toContain('Xem thêm 10 câu hỏi');
+    expect(readFileSync(resolve(__dirname,'assistant-question-catalog.ts'),'utf8').match(/question: '/g)).toHaveLength(14);
     expect(readFileSync(resolve(__dirname,'pages/system-overview/content.ts'),'utf8')).toContain("from '../../assistant-question-catalog'");
+  });
+  it('keeps the first four suggested questions on the shared catalog',()=>{
+    const catalog=readFileSync(resolve(__dirname,'assistant-question-catalog.ts'),'utf8');
+    for(const q of ['Tại sao hôm nay chưa nên gọi khách hàng này?','Dòng tiền gần đây của khách hàng thế nào?','Khách hàng có cam kết thanh toán nào đang mở không?','Nếu dòng tiền 7 ngày bằng 0 thì quyết định có thay đổi không?']) expect(catalog).toContain(q);
+  });
+  it('adds project-knowledge suggestions under a dedicated group',()=>{
+    const catalog=readFileSync(resolve(__dirname,'assistant-question-catalog.ts'),'utf8');
+    expect(catalog).toMatch(/Kiến thức sản phẩm/);
+    for(const q of ['CALL và CBS khác nhau thế nào?','GreenNode AI đóng vai trò gì trong hệ thống?','Điểm Cơ hội thu hồi được tính như thế nào?','Trợ lý có tự quyết định phương án xử lý không?']) expect(catalog).toContain(q);
+    expect(catalog).toContain("assistantQuestionCatalog.slice(0, 4)");
+  });
+  it('renders truthful staged states and the RAG sources block',()=>{
+    expect(source).toContain("setStatus('Đang xác định nội dung câu hỏi...')");
+    expect(source).toContain("setStatus('Đang tìm trong kho kiến thức...')");
+    expect(source).toContain("setStatus('GreenNode AI đang tổng hợp câu trả lời...')");
+    expect(source).toContain("r.metadata?.path==='RAG_QWEN'");
+    expect(source).toContain("setStatus(ktype?(r.sources?.length?'Đã tìm thấy nguồn liên quan.':'GreenNode AI đã tổng hợp câu trả lời')");
+    expect(source).toContain('sources:r.sources||[]');
+    expect(source).toContain('Tra cứu trong kho kiến thức có nguồn tham khảo');
+    expect(source).not.toContain("setStatus('Đã lấy quyết định nghiệp vụ')");
   });
   it('renders the assistant above page overlays through a portal',()=>{
     expect(source).toContain('createPortal(content,document.body)');

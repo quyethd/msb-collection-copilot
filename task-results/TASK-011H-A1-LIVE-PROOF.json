@@ -1,0 +1,390 @@
+{
+  "task": "TASK-011H-A",
+  "knowledge_version": "TASK-011H-V2",
+  "source_commit": "617a1ed84e6001155ae87b467bffbf962d3ce3cc",
+  "store": "greennode-vdb-opensearch",
+  "inference_anchor": "LIVE_GREENNODE_VDB",
+  "embedding_provider": "local-multilingual-minilm-l12",
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "embedding_dimension": 384,
+  "documents": 26,
+  "indexed_chunks": 129,
+  "index": "msb-collection-knowledge-v2",
+  "V1_INDEX": "msb-collection-knowledge-v1",
+  "V2_INDEX": "msb-collection-knowledge-v2",
+  "V2_INDEX_CREATED": "PASS",
+  "versions_on_store": {
+    "TASK-011H-V2": 129
+  },
+  "V1_PRESERVED": "PASS",
+  "v1_preserved_detail": {
+    "V1_PRESERVED": "PASS",
+    "v1_index": "msb-collection-knowledge-v1",
+    "v1_document_chunks": 120,
+    "versions": {
+      "TASK-011H-V1": 120
+    }
+  },
+  "V1_ACTIVE_RETRIEVAL_LEAK": "PASS",
+  "STALE_PRODUCT_FACTS_ACTIVE": "PASS",
+  "STALE_NAVIGATION_ANSWER": "PASS",
+  "nav_top_docs": [
+    "11-overview-page-guide",
+    "16-system-overview-guide",
+    "02-users-and-use-cases"
+  ],
+  "recall_3": 1.0,
+  "mrr": 0.8981,
+  "grounding_pass_rate": 1.0,
+  "citation_pass_rate": 1.0,
+  "boundary_pass_rate": 1.0,
+  "unsupported_claim_rate": 0.0,
+  "refusal_pass_rate": 1.0,
+  "eval_summary": {
+    "total_questions": 43,
+    "knowledge_rows": 36,
+    "Recall@3": 1.0,
+    "MRR": 0.8981,
+    "GROUNDING_PASS_RATE": 1.0,
+    "CITATION_PASS_RATE": 1.0,
+    "BOUNDARY_PASS_RATE": 1.0,
+    "UNSUPPORTED_CLAIM_RATE": 0.0,
+    "REFUSAL_PASS_RATE": 1.0
+  },
+  "security": {
+    "SECRET_AUDIT": "PASS",
+    "SECRET_QUERY_SAFE": "PASS",
+    "PRIVATE_REASONING_AUDIT": "PASS"
+  },
+  "latency_phases": {
+    "classification_ms": {
+      "min": 0.032,
+      "median": 0.061,
+      "max": 0.105,
+      "mean": 0.063,
+      "count": 10
+    },
+    "embedding_ms": {
+      "min": 146.156,
+      "median": 315.965,
+      "max": 481.84,
+      "mean": 310.322,
+      "count": 10
+    },
+    "retrieval_ms": {
+      "min": 608.74,
+      "median": 757.514,
+      "max": 945.781,
+      "mean": 762.272,
+      "count": 10
+    },
+    "model_ms": {
+      "min": 4656.373,
+      "median": 9516.051,
+      "max": 16754.809,
+      "mean": 10024.895,
+      "count": 10
+    },
+    "total_ms": {
+      "min": 5293.031,
+      "median": 10253.948,
+      "max": 17405.011,
+      "mean": 10787.812,
+      "count": 10
+    }
+  },
+  "live_answers": [
+    {
+      "id": "A1",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "04-call-cbs-routing",
+        "09-self-cure",
+        "23-golden-questions-and-simulated-portfolio"
+      ],
+      "model_ms": 11233.9,
+      "cited": true,
+      "answer": "Không nhất thiết. Cụ thể:\n- Việc khách hàng thuộc tuyến CALL không đồng nghĩa với việc cán bộ bắt buộc phải gọi ngay trong ngày [1][2].\n- Quy tắc này nhằm cho phép cán bộ tập trung nguồn lực vào khách hàng thực sự cần tương tác, đồng thời theo dõi diễn biến dòng tiền và cam kết của khách đang chờ tự thanh toán [2].\n- Trong dữ liệu vận hành, vẫn tồn tại một nhóm khách thuộc tuyến CALL nhưng hiện chưa cần gọi ngay [3]."
+    },
+    {
+      "id": "A2",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "04-call-cbs-routing",
+        "04-call-cbs-routing",
+        "04-call-cbs-routing"
+      ],
+      "model_ms": 6394.5,
+      "cited": true,
+      "answer": "Việc phân tuyến CALL và CBS dựa trên các điều kiện cơ sở sau (áp dụng khi Heatmap = RED và Segment thuộc nhóm RED/ORANGE/YELLOW) [3]:\n- Nếu `MAX_DPD >= 5` → phân về tuyến CALL [3].\n- Nếu `MAX_DPD < 5` → phân về tuyến CBS [3].\n\nCác trường hợp không đáp ứng điều kiện trên sẽ thuộc OTHER/NONE [3]. Trong dữ liệu mô phỏng, việc chuyển đổi giữa hai tuyến này có thể được thực hiện tường minh thông qua trường `challenge_override_route` [3]."
+    },
+    {
+      "id": "A3",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "05-recovery-opportunity",
+        "05-recovery-opportunity",
+        "05-recovery-opportunity"
+      ],
+      "model_ms": 5285.6,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, điểm Recovery Opportunity gồm 6 thành phần với điểm tối đa cụ thể như sau [1]:\n- **Business Urgency**: 20 điểm\n- **Ability to Pay**: 25 điểm\n- **Willingness to Pay**: 20 điểm\n- **Contactability**: 15 điểm\n- **Timing Opportunity**: 15 điểm\n- **Strategic Adjustment**: 5 điểm\n\nTổng điểm của hệ thống nằm trong khoảng 0–100 [1]."
+    },
+    {
+      "id": "A6",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "08-cashflow-signals",
+        "15-assistant-guide",
+        "03-problem-and-value-proposition"
+      ],
+      "model_ms": 12950.1,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, dòng tiền đóng các vai trò then chốt sau trong quyết định thu hồi:\n\n- **Đánh giá khả năng chi trả (Ability to Pay):** Dòng tiền (tiền vào 7 ngày, dòng tiền ròng 30 ngày, thu nhập ổn định, tỷ lệ thanh khoản) là yếu tố trực tiếp tính toán, góp phần 25 điểm vào chỉ số Recovery Opportunity [1].\n- **Xác định cơ hội thời điểm (Timing Opportunity):** Hệ thống xem xét dòng tiền vào trong 3 ngày kết hợp với cam kết thanh toán (PTP) và hành động tiếp theo để chọn thời điểm can thiệp tối ưu [1].\n- **Điều hướng Hành động tốt nhất tiếp theo (Next Best Action):** Quyết định can thiệp phụ thuộc vào tín hiệu dòng tiền thực tế. Ví dụ, hệ thống chỉ đề xuất `\"Chờ khách hàng tự thanh toán\"` khi đảm bảo điều kiện (tiền vào 7 ngày đủ mức, dòng tiền ròng 30 ngày dương) [1].\n- **Là tín hiệu tổng hợp bắt buộc:** Một quyết định thu hồi đáng tin cậy cần đồng bộ nhiều dữ liệu (DPD, dư nợ, dòng tiền, cam kết, lịch sử liên hệ...). Không có tín hiệu đơn lẻ nào đủ để ra quyết định, và việc thuộc tuyến CALL không đồng nghĩa phải gọi ngay mà phụ thuộc vào tín hiệu dòng tiền hiện tại [3]. Trợ lý cũng hỗ trợ giải thích cụ thể tác động của dòng tiền đến quyết định đang hiển thị hoặc kịch bản nếu dòng tiền về 0 [2]."
+    },
+    {
+      "id": "A7",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "09-self-cure",
+        "09-self-cure",
+        "09-self-cure"
+      ],
+      "model_ms": 17961.8,
+      "cited": true,
+      "answer": "Hệ thống đề xuất chờ khách hàng tự thanh toán (Self-cure) khi khách hàng đáp ứng đồng thời tất cả các điều kiện sau [2]:\n- Tuyến xử lý là CALL hoặc CBS [2];\n- DPD không vượt ngưỡng (hiện tại DPD <= 14) [2];\n- Không có cam kết thanh toán đang mở (PTP state = NONE) [2];\n- Kết quả nghiệp vụ gần nhất không phải RTP hoặc NIN [2];\n- Dữ liệu dòng tiền sẵn có và dòng tiền ròng 30 ngày > 0 [2];\n- Tiền vào 7 ngày đạt mức tối thiểu cấu hình (hiện tại >= 15 triệu đồng) [2];\n- Không có hạn chế xử lý (hard suppression) [2];\n- Không có ngày hành động tiếp theo từ nguồn (source next action date) [2].\n\nKhi đủ điều kiện, hệ thống sẽ gán trạng thái chờ tương ứng với tuyến của khách hàng (CALL → WAIT_SELF_CURE, CBS → Chờ theo dõi), cho phép cán bộ tập trung nguồn lực vào khách hàng thực sự cần tương tác thay vì liên hệ ngay [1][3]."
+    },
+    {
+      "id": "B1",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "17-system-architecture",
+        "17-system-architecture",
+        "17-system-architecture"
+      ],
+      "model_ms": 7952.5,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, kiến trúc hệ thống được chia thành 5 lớp chính sau đây [1]:\n\n1. **FRONTEND** – Giao diện ứng dụng sau khi đăng nhập, bao gồm các chức năng như Tổng quan, Danh sách ưu tiên, Khách hàng, Tác động dự kiến, Trợ lý sidebar, cùng các trang công khai (`/`, `/login`) [1].\n2. **API / DEMO LAYER** – Tầng cung cấp dịch vụ dữ liệu và xác thực, bao gồm Customer 360, Portfolio, Timeline, Events, Impact và demo auth (`/demo/auth/login`) [1].\n3. **DETERMINISTIC DECISION CORE** – Nhân lõi ra quyết định xác định, xử lý Policy, Recovery Score, NBA (Next Best Action) và Simulation [1].\n4. **GRENNODE AGENT** – Lớp tương tác và điều phối tự nhiên, hỗ trợ Tool Use, Explain, Investigate, Simulate và Summary [1].\n5. **DATA / CONTEXT** – Tầng dữ liệu và ngữ cảnh, lưu trữ thông tin về Customer, Loan, Cashflow, PTP, lịch sử cuộc gọi (dữ liệu mô phỏng) và vector kho kiến thức dự án tại GreenNode vDB OpenSearch [1]."
+    },
+    {
+      "id": "B2",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "20-trust-and-safety",
+        "04-call-cbs-routing",
+        "19-agentbase-and-tools"
+      ],
+      "model_ms": 6690.4,
+      "cited": true,
+      "answer": "Dựa trên kho kiến thức cung cấp, nguồn quyết định nghiệp vụ cho routing, score và treatment là **Decision Core deterministic** (cụ thể là **Deterministic Policy/Rule Engine**) [1][3]. \n\n- AI không được phép tự quyết định, ước lượng hay ghi đè các yếu tố routing/score/treatment cho khách hàng [1][3].\n- Routing và các logic xử lý liên quan là quyết định deterministic, hoàn toàn không do AI đưa ra [2].\n- Trong trường hợp kết quả từ mô hình LLM xung đột với hard rule, hard rule sẽ luôn thắng và xung đột đó phải được ghi log [3]."
+    },
+    {
+      "id": "D2",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "21-evaluation-and-trust-evidence",
+        "21-evaluation-and-trust-evidence",
+        "21-evaluation-and-trust-evidence"
+      ],
+      "model_ms": 13694.3,
+      "cited": true,
+      "answer": "Để tin cậy vào kết quả hệ thống, bạn có thể dựa trên các cơ chế kiểm soát và nguyên tắc minh bạch sau:\n\n- Hệ thống đảm bảo độ chính xác quyết định (decision fidelity) gần như tuyệt đối đối với các câu hỏi được thiết kế chuẩn [1].\n- Cơ chế an toàn được áp dụng: không bịa dữ liệu khách hàng chưa biết, không cho phép ghi đè (override) quyết định và không tiết lộ logic suy luận nội bộ [1].\n- Phản hồi luôn dựa trên đầu ra có cấu trúc (structured output) từ công cụ, đảm bảo tính nhất quán và đúng ý đồ nghiệp vụ [1].\n- Việc công bố số liệu tuân thủ nguyên tắc minh bạch: phải có quy trình tái lặp rõ ràng, nêu rõ nguồn dữ liệu (mô phỏng hay thật) và phân biệt rõ kết quả demo/foundation test với kết quả vận hành thực tế [2].\n- Các bộ truy vấn chuẩn (golden queries) và kết quả đánh giá được lưu trữ trong kho kiến thức, cùng với chỉ số chính thức được công bố tại thời điểm foundation test [3]."
+    },
+    {
+      "id": "D5",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "22-synthetic-data",
+        "14-impact-page-guide",
+        "23-golden-questions-and-simulated-portfolio"
+      ],
+      "model_ms": 14012.1,
+      "cited": true,
+      "answer": "Theo kho kiến thức hiện có, cụm từ này mang ý nghĩa cụ thể như sau:\n- Đây là số lượng hồ sơ trong bản demo mô phỏng thuộc nhóm tuyến CALL nhưng hiện tại chưa yêu cầu thực hiện liên hệ ngay [1][3].\n- Giá trị này chỉ dựa trên dữ liệu mô phỏng và các giả định đầu vào, không phải số liệu vận hành thực tế [2].\n- Tuyệt đối không được diễn giải hay phát biểu con số này là \"đã giảm 32 cuộc gọi\" hay khẳng định bất kỳ mức tăng thu hồi/ROI nào [1][2][3]."
+    },
+    {
+      "id": "D6",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "21-evaluation-and-trust-evidence",
+        "03-problem-and-value-proposition",
+        "20-trust-and-safety"
+      ],
+      "model_ms": 7937.8,
+      "cited": true,
+      "answer": "Quyết định thuộc về **Decision Core deterministic**. AI không được, không thể và không có công cụ để tự quyết định routing/score/treatment cho khách hàng [3]."
+    },
+    {
+      "id": "C6",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "16-system-overview-guide",
+        "01-product-overview",
+        "16-system-overview-guide"
+      ],
+      "model_ms": 4720.7,
+      "cited": true,
+      "answer": "Trang giới thiệu sản phẩm (landing) của hệ thống nằm ở đường dẫn gốc `/` [1][2]. Đây là trang web công khai, hiển thị nội dung trước khi người dùng thực hiện đăng nhập [1]."
+    },
+    {
+      "id": "C7",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "02-users-and-use-cases",
+        "16-system-overview-guide",
+        "01-product-overview"
+      ],
+      "model_ms": 9468.8,
+      "cited": true,
+      "answer": "Để vào khu vực ứng dụng của hệ thống, người dùng thực hiện theo các bước sau:\n- Truy cập trang giới thiệu sản phẩm (landing) tại đường dẫn gốc `/` và nhấn nút **Đăng nhập hệ thống** [1][2].\n- Chuyển đến trang đăng nhập demo tại `/login` [2][3].\n- Đăng nhập bằng tài khoản demo do team cung cấp [1][2][3].\n- Sau khi hoàn tất đăng nhập, người dùng sẽ được truy cập vào khu vực ứng dụng tại đường dẫn `/app` [1][2]."
+    },
+    {
+      "id": "C8",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "11-overview-page-guide",
+        "16-system-overview-guide",
+        "02-users-and-use-cases"
+      ],
+      "model_ms": 5036.4,
+      "cited": true,
+      "answer": "Menu (sidebar) trong khu vực ứng dụng bao gồm các trang sau:\n- Tổng quan [1][2][3]\n- Danh sách ưu tiên [1][2][3]\n- Khách hàng [1][2][3]\n- Tác động dự kiến [1][2][3]\n- Trợ lý (Trợ lý Thu hồi Nợ) [1][2][3]"
+    },
+    {
+      "id": "C9",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "18-greennode-ai-platform",
+        "17-system-architecture",
+        "18-greennode-ai-platform"
+      ],
+      "model_ms": 16470.3,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, GreenNode AI được sử dụng trong hệ thống với các chức năng chính sau:\n\n- **Điều phối công cụ & quản lý Agent**: Thành phần AgentBase chịu trách nhiệm điều phối công cụ nghiệp vụ và quản lý Agent [1]. Trong luồng vận hành, GreenNode Agent giúp hiểu câu hỏi tự nhiên của người dùng, chọn đúng công cụ nghiệp vụ, lấy quyết định từ Decision Core và giải thích dựa trên bằng chứng [2].\n- **Hỗ trợ giải thích & trả lời kiến thức**: Mô hình GLM 5.2 được tích hợp để hỗ trợ giải thích các quyết định nghiệp vụ phức tạp [1]. Mô hình Qwen Flash đảm nhận việc trả lời nhanh các câu hỏi mang tính kiến thức [1].\n- **Cung cấp ngữ cảnh & truy xuất dữ liệu**: Vector Database (OpenSearch/pgvector) được dùng để lưu trữ và cung cấp ngữ cảnh có nguồn cho các truy vấn kiến thức [1]. Hệ thống thực hiện nhúng toàn bộ kho kiến thức, truy xuất chunk liên quan qua kNN và chuẩn hóa điểm cosine để so sánh ngưỡng [3].\n- **Hỗ trợ quy trình RAG**: Tích hợp Qwen Flash để sinh câu trả lời dựa trên bằng chứng truy xuất được, đồng thời kèm trích dẫn (citation) tới các tài liệu nguồn [3]. (Lưu ý: Hiện tại module RAG chưa được tích hợp vào môi trường sản xuất chính thức) [3]."
+    },
+    {
+      "id": "C10",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "01-product-overview",
+        "18-greennode-ai-platform",
+        "25-roadmap-and-next-steps"
+      ],
+      "model_ms": 7796.4,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, Vector Database (vDB) của GreenNode được sử dụng để:\n- Lưu và truy xuất vector kho tri thức dự án [1].\n- Cung cấp ngữ cảnh có nguồn cho các truy vấn kiến thức [2]."
+    },
+    {
+      "id": "D7",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "01-product-overview",
+        "17-system-architecture",
+        "18-greennode-ai-platform"
+      ],
+      "model_ms": 4515.4,
+      "cited": true,
+      "answer": "Mô hình embedding được chạy **local** (cục bộ), sử dụng mô hình đa ngôn ngữ MiniLM-L12 và không chạy trên nền tảng MaaS [1][2]."
+    },
+    {
+      "id": "D8",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "18-greennode-ai-platform",
+        "21-evaluation-and-trust-evidence",
+        "17-system-architecture"
+      ],
+      "model_ms": 6735.5,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, Qwen Flash (thuộc thành phần MaaS của nền tảng GreenNode) được sử dụng với các mục đích chính sau:\n- Trả lời nhanh các câu hỏi kiến thức [1].\n- Tổng hợp câu trả lời có nguồn trích dẫn (citation) dựa trên các đoạn kiến thức (chunk) đã được truy xuất từ cơ sở dữ liệu vector [3]."
+    },
+    {
+      "id": "D9",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "02-users-and-use-cases",
+        "18-greennode-ai-platform",
+        "04-call-cbs-routing"
+      ],
+      "model_ms": 5731.1,
+      "cited": true,
+      "answer": "Theo kho kiến thức hiện tại, RAG **không** tự quyết định khách hàng nên thuộc tuyến CALL hay CBS. Kho kiến thức RAG chỉ đóng vai trò truy vấn tài liệu để hỗ trợ cán bộ hiểu và thực thi quyết định, còn việc xác định tuyến xử lý cụ thể do Decision Core thực hiện dựa trên chính sách (policy) [2]."
+    },
+    {
+      "id": "D10",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "18-greennode-ai-platform",
+        "17-system-architecture",
+        "01-product-overview"
+      ],
+      "model_ms": 8951.7,
+      "cited": true,
+      "answer": "Có, kho kiến thức hiện tại đang chạy trên GreenNode vDB [1][2][3]. \n\nCụ thể, toàn bộ kho kiến thức (phiên bản TASK-011H-V2) đã được upsert và lưu trữ dưới dạng vector trong index vDB OpenSearch của GreenNode, đồng thời đã được kiểm chứng live proof thành công [1][2]. Lưu ý rằng hệ thống RAG này hiện chỉ hoạt động ở môi trường live proof, chưa được tích hợp vào giao diện Trợ lý production [1][2][3]."
+    },
+    {
+      "id": "D11",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "25-roadmap-and-next-steps",
+        "01-product-overview",
+        "16-system-overview-guide"
+      ],
+      "model_ms": 6812.4,
+      "cited": true,
+      "answer": "Theo kho kiến thức hiện tại, việc tích hợp RAG vào Trợ lý production **chưa được thực hiện** [1][2][3]. Hiện tại, lớp kiến thức RAG chỉ mới được kiểm chứng chạy thật trên GreenNode vDB OpenSearch để ingest và truy xuất dữ liệu, nhưng chưa được kết nối vào giao diện Trợ lý production [2][3]."
+    }
+  ],
+  "qwen_answered": 20,
+  "qwen_model_median_ms": 7937.8,
+  "gates": {
+    "knowledge_version": "TASK-011H-V2",
+    "source_commit": "617a1ed84e6001155ae87b467bffbf962d3ce3cc",
+    "noop_documents": 26,
+    "corpus_chunks": 129,
+    "QWEN_FAST_MODEL": "qwen/qwen3.6-flash",
+    "QWEN_FAST_MODEL_AVAILABLE": "PASS",
+    "EMBEDDING_PROVIDER": "local-multilingual",
+    "EMBEDDING_MODEL": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "EMBEDDING_DIMENSION": 384,
+    "EMBEDDING_MODEL_STATUS": "LOCAL_MULTILINGUAL_AVAILABLE",
+    "SEMANTIC_MIN_SCORE": 0.38,
+    "SEMANTIC_PARAPHRASE_GATE": "PASS",
+    "GRENNODE_VDB_AVAILABLE": "PASS",
+    "LIVE_VDB_INGEST": "PASS",
+    "LIVE_VDB_RETRIEVAL": "PASS",
+    "LIVE_QWEN_RAG": "PASS",
+    "PROJECT_KNOWLEDGE_RAG_LIVE": "PASS",
+    "INFERENCE_ANCHOR": "LIVE_GREENNODE_VDB",
+    "DECISION_CORE_UNCHANGED": true,
+    "COPILOT_INTEGRATION": "NO",
+    "DEPLOY": "NO"
+  },
+  "d6_result": "PASS",
+  "live_vdb_ingest": "PASS",
+  "live_vdb_retrieval": "PASS",
+  "live_qwen_rag": "PASS",
+  "project_rag_live": "PASS",
+  "drift": 0,
+  "blob": "VDB_BACKEND=greennode-vdb-opensearch\nINFERENCE_ANCHOR=LIVE_GREENNODE_VDB\nKNOWLEDGE_VERSION=TASK-011H-V2\nSOURCE_COMMIT=617a1ed84e6001155ae87b467bffbf962d3ce3cc\nV1_INDEX=msb-collection-knowledge-v1\nV2_INDEX=msb-collection-knowledge-v2\nV2_INDEX_CREATED=PASS\nV1_PRESERVED=PASS\nV1_ACTIVE_RETRIEVAL_LEAK=PASS\nSTALE_PRODUCT_FACTS_ACTIVE=PASS\nSTALE_NAVIGATION_ANSWER=PASS\nEMBEDDING_PROVIDER=local-multilingual-minilm-l12\nEMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2\nEMBEDDING_DIMENSION=384\nDOCUMENTS=26\nCHUNKS=129\nRECALL_AT_3=1.0\nMRR=0.8981\nCITATION_PASS_RATE=1.0\nBOUNDARY_PASS_RATE=1.0\nUNSUPPORTED_CLAIM_RATE=0.0\nLIVE_GREENNODE_MAAS=RUN\nD6_RESULT=PASS\nLIVE_VDB_INGEST=PASS\nLIVE_VDB_RETRIEVAL=PASS\nLIVE_QWEN_RAG=PASS\nLIVE_QWEN_RAG_V2=PASS\nPROJECT_KNOWLEDGE_RAG_LIVE=PASS\nBUSINESS_SEMANTICS_DRIFT=0\nCOPILOT_INTEGRATION=NO\nDEPLOY=NO"
+}

@@ -1,0 +1,231 @@
+{
+  "task": "TASK-011H-A",
+  "knowledge_version": "TASK-011H-V1",
+  "source_commit": "44d24e3c3d2c6277ef2a172e5d8548a1a0402277",
+  "store": "greennode-vdb-opensearch",
+  "inference_anchor": "LIVE_GREENNODE_VDB",
+  "embedding_provider": "local-multilingual-minilm-l12",
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "embedding_dimension": 384,
+  "documents": 26,
+  "indexed_chunks": 120,
+  "recall_3": 1.0,
+  "mrr": 0.8974,
+  "eval_summary": {
+    "total_questions": 33,
+    "knowledge_rows": 26,
+    "Recall@3": 1.0,
+    "MRR": 0.8974,
+    "GROUNDING_PASS_RATE": 1.0,
+    "CITATION_PASS_RATE": 1.0,
+    "BOUNDARY_PASS_RATE": 1.0,
+    "UNSUPPORTED_CLAIM_RATE": 0.0,
+    "REFUSAL_PASS_RATE": 1.0
+  },
+  "security": {
+    "SECRET_AUDIT": "PASS",
+    "SECRET_QUERY_SAFE": "PASS",
+    "PRIVATE_REASONING_AUDIT": "PASS"
+  },
+  "latency_phases": {
+    "classification_ms": {
+      "min": 0.041,
+      "median": 0.059,
+      "max": 0.157,
+      "mean": 0.075,
+      "count": 10
+    },
+    "embedding_ms": {
+      "min": 188.936,
+      "median": 263.336,
+      "max": 378.509,
+      "mean": 271.649,
+      "count": 10
+    },
+    "retrieval_ms": {
+      "min": 675.018,
+      "median": 727.745,
+      "max": 847.893,
+      "mean": 745.886,
+      "count": 10
+    },
+    "model_ms": {
+      "min": 5534.254,
+      "median": 9641.12,
+      "max": 13859.498,
+      "mean": 9598.461,
+      "count": 10
+    },
+    "total_ms": {
+      "min": 6241.163,
+      "median": 10359.926,
+      "max": 14708.023,
+      "mean": 10345.028,
+      "count": 10
+    }
+  },
+  "live_answers": [
+    {
+      "id": "A1",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "04-call-cbs-routing",
+        "09-self-cure",
+        "23-golden-questions-and-simulated-portfolio"
+      ],
+      "model_ms": 5891.0,
+      "cited": true,
+      "answer": "Không, khách hàng thuộc tuyến CALL không nhất thiết phải gọi hôm nay [1]. Quy định này nhằm giúp cán bộ tập trung nguồn lực vào những khách hàng thực sự cần tương tác, đồng thời theo dõi sát diễn biến dòng tiền và cam kết của khách đang chờ [2]. Trong một số trường hợp cụ thể, hành động được khuyến nghị là \"Chờ khách hàng tự thanh toán\" với kênh \"Chưa cần liên hệ ngay\" [1]."
+    },
+    {
+      "id": "A2",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "04-call-cbs-routing",
+        "04-call-cbs-routing",
+        "04-call-cbs-routing"
+      ],
+      "model_ms": 11377.0,
+      "cited": true,
+      "answer": "Việc phân tuyến CALL và CBS được xác định dựa trên các điều kiện cơ sở sau (áp dụng khi Heatmap = RED và Segment thuộc nhóm RED/ORANGE/YELLOW) [3]:\n- Nếu MAX_DPD >= 5 → khách hàng thuộc tuyến **CALL** [3].\n- Nếu MAX_DPD < 5 → khách hàng thuộc tuyến **CBS** [3].\n\nNgoài ra, các trường hợp thuộc Challenge-set có thể thực hiện chuyển tuyến từ CALL sang CBS hoặc từ CBS sang CALL [3]."
+    },
+    {
+      "id": "A3",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "05-recovery-opportunity",
+        "05-recovery-opportunity",
+        "05-recovery-opportunity"
+      ],
+      "model_ms": 11197.4,
+      "cited": true,
+      "answer": "Theo tài liệu [1], điểm Recovery Opportunity tổng nằm trong khoảng 0–100 và gồm 6 thành phần với điểm tối đa cụ thể như sau:\n- Business Urgency: 20 điểm [1]\n- Ability to Pay: 25 điểm [1]\n- Willingness to Pay: 20 điểm [1]\n- Contactability: 15 điểm [1]\n- Timing Opportunity: 15 điểm [1]\n- Strategic Adjustment: 5 điểm [1]"
+    },
+    {
+      "id": "A6",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "08-cashflow-signals",
+        "15-assistant-guide",
+        "03-problem-and-value-proposition"
+      ],
+      "model_ms": 13985.5,
+      "cited": true,
+      "answer": "Dựa trên kho kiến thức được cung cấp, dòng tiền đóng các vai trò then chốt sau trong quyết định thu hồi:\n\n- **Tính điểm Khả năng chi trả (Ability to Pay):** Dòng tiền là yếu tố đầu vào chính để đánh giá khả năng chi trả, đóng góp 25 điểm trong chỉ số Cơ hội thu hồi (Recovery Opportunity), dựa trên tiền vào 7 ngày, dòng tiền ròng 30 ngày, thu nhập ổn định và tỷ lệ thanh khoản [1].\n- **Xác định Cơ hội thời điểm (Timing Opportunity):** Hệ thống xem xét dòng tiền trong 3 ngày gần nhất kết hợp với cam kết thanh toán (PTP) và hành động tiếp theo để chọn thời điểm tác động phù hợp [1].\n- **Điều khiển Hành động tối ưu tiếp theo (Next Best Action):** Tín hiệu dòng tiền quyết định việc có nên chờ khách hàng tự thanh toán hay không. Hành động \"Chờ khách hàng tự thanh toán\" chỉ được kích hoạt khi đáp ứng đồng thời hai điều kiện: tiền vào 7 ngày đủ mức và dòng tiền ròng 30 ngày dương [1].\n- **Bắt buộc tích hợp đa tín hiệu:** Dòng tiền không đủ để đưa ra quyết định độc lập. Một quyết định thu hồi đáng tin cậy phải tổng hợp dòng tiền cùng với DPD, dư nợ, cam kết thanh toán, lịch sử liên hệ, khả năng liên hệ và tuyến xử lý [3].\n- **Hỗ trợ giải thích & mô phỏng quyết định:** Dữ liệu dòng tiền gần đây là căn cứ để Trợ lý giải thích lý do quyết định hiện tại, tóm tắt tình trạng khách hàng hoặc mô phỏng kịch bản (ví dụ: phân tích tác động nếu dòng tiền 7 ngày bằng 0) [2]."
+    },
+    {
+      "id": "A7",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "09-self-cure",
+        "09-self-cure",
+        "09-self-cure"
+      ],
+      "model_ms": 13913.6,
+      "cited": true,
+      "answer": "Hệ thống đề xuất chờ khách hàng tự thanh toán (Self-cure) khi khách hàng đáp ứng đồng thời tất cả các điều kiện sau [2]:\n- Thuộc tuyến CALL hoặc CBS [2];\n- DPD không vượt ngưỡng (ngưỡng hiện tại: DPD <= 14) [2];\n- Không có cam kết thanh toán đang mở (PTP state = NONE) [2];\n- Kết quả nghiệp vụ gần nhất không phải RTP hoặc NIN [2];\n- Dữ liệu dòng tiền sẵn có [2];\n- Dòng tiền ròng 30 ngày > 0 [2];\n- Tiền vào 7 ngày đạt mức tối thiểu cấu hình (hiện tại >= 15 triệu đồng) [2];\n- Không có hạn chế xử lý (hard suppression) [2];\n- Không có ngày hành động tiếp theo từ nguồn (source next action date) [2].\n\nKhi thuộc tuyến CALL và đủ các điều kiện trên, hệ thống sẽ đề xuất trạng thái \"Chờ khách hàng tự thanh toán\" (WAIT_SELF_CURE), nghĩa là kênh chưa cần liên hệ ngay hôm nay [2]. Tình huống này cho phép cán bộ tập trung nguồn lực vào khách hàng thực sự cần tương tác, đồng thời theo dõi diễn biến dòng tiền và cam kết của khách đang chờ [3]."
+    },
+    {
+      "id": "B1",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "17-system-architecture",
+        "17-system-architecture",
+        "16-system-overview-guide"
+      ],
+      "model_ms": 6035.7,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, kiến trúc hệ thống được chia thành 5 lớp chính như sau:\n\n1. **FRONTEND** – Bao gồm: Tổng quan, Danh sách ưu tiên, Khách hàng, Tác động dự kiến, Giới thiệu hệ thống, Trợ lý [1].\n2. **API / DEMO LAYER** – Bao gồm: Customer 360, Portfolio, Timeline, Events, Impact [1].\n3. **DETERMINISTIC DECISION CORE** – Bao gồm: Policy, Recovery Score, NBA, Simulation [1].\n4. **GRENNODE AGENT** – Bao gồm: Tool Use, Explain, Investigate, Simulate, Summary [1].\n5. **DATA / CONTEXT** – Bao gồm: Customer, Loan, Cashflow, PTP, Call history (dữ liệu mô phỏng) [1]."
+    },
+    {
+      "id": "B2",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "20-trust-and-safety",
+        "04-call-cbs-routing",
+        "19-agentbase-and-tools"
+      ],
+      "model_ms": 6526.8,
+      "cited": true,
+      "answer": "Nguồn quyết định nghiệp vụ cho routing, score và treatment là **Decision Core deterministic** (hay **Deterministic Policy/Rule Engine**) [1][3]. Hệ thống này đóng vai trò là nguồn sự thật duy nhất (source of truth) cho các logic nghiệp vụ đã khóa [3]. AI không được phép tự quyết định, ước lượng hay ghi đè lên các quy tắc này; mọi quyết định đều mang tính xác định (deterministic) và phản ánh đúng structured output từ công cụ nghiệp vụ [1][2][3]."
+    },
+    {
+      "id": "D2",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "21-evaluation-and-trust-evidence",
+        "21-evaluation-and-trust-evidence",
+        "21-evaluation-and-trust-evidence"
+      ],
+      "model_ms": 10243.4,
+      "cited": true,
+      "answer": "Để tin cậy vào kết quả của hệ thống, bạn có thể tham khảo các bằng chứng và nguyên tắc kiểm chứng sau:\n\n- **Độ chính xác & Tính toàn vẹn quyết định:** Hệ thống đảm bảo độ chính xác quyết định gần như tuyệt đối với các câu hỏi được thiết kế chuẩn, không tự ý bịa dữ liệu khách hàng chưa biết và không cho phép ghi đè (override) quyết định [1].\n- **Minh bạch cơ chế vận hành:** Hệ thống không lộ reasoning nội bộ, tool-use đúng intent và mọi phản hồi đều dựa trên output có cấu trúc (structured) từ công cụ [1].\n- **Nguyên tắc công khai số liệu:** Kết quả/số liệu chỉ được công bố khi có phương pháp tái lặp rõ ràng (seed, dataset, phiên bản), nêu rõ nguồn dữ liệu (phân biệt dữ liệu mô phỏng và dữ liệu thật), đồng thời tách biệt kết quả demo/foundation test với môi trường production [2].\n- **Lưu trữ & Công bố chỉ số chính thức:** Bộ golden queries và kết quả đánh giá được lưu trong kho kiến thức cùng bộ đánh giá của dự án; chỉ số chính thức sẽ được công bố rõ ràng tại thời điểm foundation test [3].\n\nCác yếu tố trên giúp đảm bảo tính nhất quán, minh bạch và khả năng kiểm chứng của kết quả hệ thống."
+    },
+    {
+      "id": "D5",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "22-synthetic-data",
+        "14-impact-page-guide",
+        "23-golden-questions-and-simulated-portfolio"
+      ],
+      "model_ms": 10480.0,
+      "cited": true,
+      "answer": "Dựa trên tài liệu cung cấp, cụm từ này có nghĩa là:\n- Đây là số lượng hồ sơ trong danh mục mô phỏng, cho biết có 32 khách hàng thuộc phân tuyến CALL nhưng hiện tại chưa cần thực hiện cuộc gọi liên hệ ngay [1][2][3].\n- Con số này **không** mang ý nghĩa “đã giảm 32 cuộc gọi” hay đại diện cho kết quả vận hành/thu hồi thực tế, mà chỉ là dữ liệu ước tính dựa trên giả định đầu vào của bản demo [1][2].\n- Khi sử dụng số liệu này, bạn chỉ nên trình bày đúng như tên gọi và tuyệt đối không diễn giải thành kết quả thực tế hoặc tự đưa ra khẳng định về hiệu quả nghiệp vụ [3]."
+    },
+    {
+      "id": "D6",
+      "status": "ANSWERED",
+      "classification": "PROJECT_KNOWLEDGE",
+      "top_docs": [
+        "21-evaluation-and-trust-evidence",
+        "03-problem-and-value-proposition",
+        "20-trust-and-safety"
+      ],
+      "model_ms": 11944.1,
+      "cited": true,
+      "answer": "Theo kho kiến thức cung cấp, quyết định cuối cùng thuộc về **Decision Core deterministic** [3]. Hệ thống quy định rõ rằng AI không được phép, không thể và không có công cụ để tự quyết định việc phân tuyến (routing), chấm điểm (score) hay phương án xử lý (treatment) cho khách hàng [3]. Mọi quyết định nghiệp vụ phải tuân thủ cơ chế xác định này, không do AI tự động đưa ra [3]."
+    }
+  ],
+  "qwen_answered": 10,
+  "qwen_model_median_ms": 11197.4,
+  "gates": {
+    "knowledge_version": "TASK-011H-V1",
+    "source_commit": "44d24e3c3d2c6277ef2a172e5d8548a1a0402277",
+    "noop_documents": 26,
+    "corpus_chunks": 120,
+    "QWEN_FAST_MODEL": "qwen/qwen3.6-flash",
+    "QWEN_FAST_MODEL_AVAILABLE": "PASS",
+    "EMBEDDING_PROVIDER": "local-multilingual",
+    "EMBEDDING_MODEL": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "EMBEDDING_DIMENSION": 384,
+    "EMBEDDING_MODEL_STATUS": "LOCAL_MULTILINGUAL_AVAILABLE",
+    "SEMANTIC_MIN_SCORE": 0.38,
+    "SEMANTIC_PARAPHRASE_GATE": "PASS",
+    "GRENNODE_VDB_AVAILABLE": "PASS",
+    "LIVE_VDB_INGEST": "PASS",
+    "LIVE_VDB_RETRIEVAL": "PASS",
+    "LIVE_QWEN_RAG": "PASS",
+    "PROJECT_KNOWLEDGE_RAG_LIVE": "PASS",
+    "INFERENCE_ANCHOR": "LIVE_GREENNODE_VDB",
+    "DECISION_CORE_UNCHANGED": true,
+    "COPILOT_INTEGRATION": "NO",
+    "DEPLOY": "NO"
+  },
+  "d6_result": "PASS",
+  "live_vdb_ingest": "PASS",
+  "live_vdb_retrieval": "PASS",
+  "live_qwen_rag": "PASS",
+  "project_rag_live": "PASS",
+  "drift": 0,
+  "blob": "VDB_BACKEND=greennode-vdb-opensearch\nINFERENCE_ANCHOR=LIVE_GREENNODE_VDB\nEMBEDDING_PROVIDER=local-multilingual-minilm-l12\nEMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2\nEMBEDDING_DIMENSION=384\nDOCUMENTS=26\nCHUNKS=120\nRECALL_AT_3=1.0\nMRR=0.8974\nLIVE_GREENNODE_MAAS=RUN\nD6_RESULT=PASS\nLIVE_VDB_INGEST=PASS\nLIVE_VDB_RETRIEVAL=PASS\nLIVE_QWEN_RAG=PASS\nPROJECT_KNOWLEDGE_RAG_LIVE=PASS\nBUSINESS_SEMANTICS_DRIFT=0\nCOPILOT_INTEGRATION=NO\nDEPLOY=NO"
+}

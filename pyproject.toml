@@ -8,6 +8,9 @@ version = "1.0.0"
 description = "Deterministic synthetic data foundation for MSB Collection Decision Copilot"
 requires-python = ">=3.10"
 
+[project.optional-dependencies]
+live = ["fastembed>=0.8"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

@@ -62,14 +62,13 @@ describe('TASK-009 demo UI contract',()=>{
     for(const q of ['CALL và CBS khác nhau thế nào?','GreenNode AI đóng vai trò gì trong hệ thống?','Điểm Cơ hội thu hồi được tính như thế nào?','Trợ lý có tự quyết định phương án xử lý không?']) expect(catalog).toContain(q);
     expect(catalog).toContain("assistantQuestionCatalog.slice(0, 4)");
   });
-  it('renders truthful staged states and the RAG sources block',()=>{
-    expect(source).toContain("setStatus('Đang xác định nội dung câu hỏi...')");
-    expect(source).toContain("setStatus('Đang tìm trong kho kiến thức...')");
-    expect(source).toContain("setStatus('GreenNode AI đang tổng hợp câu trả lời...')");
+  it('renders generic pending state and route-confirmed RAG sources',()=>{
+    expect(source).toContain("setStatus('Đang xử lý câu hỏi...')");
+    expect(source).not.toContain("Đang tìm trong kho kiến thức...");
+    expect(source).not.toContain("GreenNode AI đang tổng hợp câu trả lời...");
     expect(source).toContain("r.metadata?.path==='RAG_QWEN'");
-    expect(source).toContain("setStatus(ktype?(r.sources?.length?'Đã tìm thấy nguồn liên quan.':'GreenNode AI đã tổng hợp câu trả lời')");
+    expect(source).toContain('setStatus(responseStatus(r))');
     expect(source).toContain('sources:r.sources||[]');
-    expect(source).toContain('Tra cứu trong kho kiến thức có nguồn tham khảo');
     expect(source).not.toContain("setStatus('Đã lấy quyết định nghiệp vụ')");
   });
   it('renders the assistant above page overlays through a portal',()=>{

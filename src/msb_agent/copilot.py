@@ -22,14 +22,14 @@ INTENTS = (
     "GREETING_HELP", "KNOWLEDGE", "CUSTOMER_SUMMARY", "CASHFLOW", "PTP",
     "ROUTE_PRIORITY", "DECISION_EXPLANATION", "SIMULATION", "OUT_OF_SCOPE",
 )
-_DECISION_WORDS = ("tai sao", "sao ", "nen goi", "chua goi", "chua nen", "goi ngay", "de xuat", "hanh dong", "xu ly sao", "bo qua de xuat")
+_DECISION_WORDS = ("tai sao", "sao ", "nen goi", "chua goi", "chua nen", "goi ngay", "de xuat", "hanh dong", "xu ly sao", "bo qua de xuat", "bo qua rule", "chuyen khach", "contact")
 # Concept questions ("... là gì?", "... dùng để làm gì?", "... khác nhau thế nào?")
 # route to the Project Knowledge RAG. They deliberately never match customer
 # phrasing: "Dòng tiền SYN002846 hiện thế nào?" keeps its CIF-bound intent.
 _KNOWLEDGE_MARKERS = (
     "la gi", "de lam gi", "dong vai tro", "khac nhau the nao", "khac nhau nhu the nao",
     "nam o dau", "chay o dau", "duoc tinh nhu the nao", "duoc tinh the nao",
-    "tu quyet dinh", "tu dua ra quyet dinh", "ai quyet dinh", "quyen quyet dinh",
+    "tu quyet dinh", "tu dua ra quyet dinh", "ai quyet dinh", "quyen quyet dinh", "lien quan gi",
     "nghia la",
 )
 _SECURITY_WORDS = (
@@ -37,6 +37,47 @@ _SECURITY_WORDS = (
     ".env", "password", "mat khau", "credentials", "credential",
     "reasoning_content", "private prompt", "internal endpoint",
 )
+
+_FOLLOWUP_WORDS = ("vi sao", "vì sao", "the con", "thế còn", "vay nen lam gi", "vậy nên làm gì", "lien quan gi", "liên quan gì")
+_CUSTOMER_CIF_RE = re.compile(r"\b(?:SYN\d{6}|GOLDEN_G\d{2})\b", re.IGNORECASE)
+
+
+def _conversation_context(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return only bounded, non-authoritative routing hints from the UI."""
+    raw = payload.get("conversation_context")
+    if not isinstance(raw, dict):
+        return {}
+    allowed = ("active_cif", "previous_intent", "previous_topic", "previous_user_question",
+               "previous_path", "last_simulation_field", "last_simulation_changes")
+    context: dict[str, Any] = {}
+    for key in allowed:
+        value = raw.get(key)
+        if isinstance(value, str):
+            context[key] = value[:160]
+        elif key == "last_simulation_changes" and isinstance(value, dict):
+            safe = {}
+            for field in ("inflow_7d", "inflow_3d", "net_cashflow_30d", "ptp_state"):
+                if field in value and isinstance(value[field], (int, float, str)):
+                    safe[field] = value[field]
+            context[key] = safe
+    return context
+
+
+def _resolve_followup(message: str, context: dict[str, Any]) -> str | None:
+    """Resolve short references for routing only; never supplies business facts."""
+    if not context or not any(token in _plain(message) for token in _FOLLOWUP_WORDS):
+        return None
+    previous = context.get("previous_intent")
+    text = _plain(message)
+    if previous == "DECISION_EXPLANATION" and any(token in text for token in ("vi sao", "vì sao")):
+        return "DECISION_EXPLANATION"
+    if previous == "CASHFLOW" and any(token in text for token in ("the con", "thế còn")):
+        return "CASHFLOW"
+    if previous == "SIMULATION" and any(token in text for token in ("vay nen lam gi", "vậy nên làm gì")):
+        return "SIMULATION"
+    if previous == "KNOWLEDGE" and any(token in text for token in ("lien quan gi", "liên quan gì")):
+        return "KNOWLEDGE"
+    return None
 
 
 def _plain(value: str) -> str:
@@ -230,7 +271,26 @@ def route_copilot(payload: dict[str, Any], caller: ToolCaller) -> dict[str, Any]
     if not isinstance(cif, str) or not cif.strip() or not isinstance(message, str):
         return {"status": "error", "error": {"code": "INVALID_ARGUMENT", "message": "cif and message are required"}}
     cif = cif.strip(); message = message.strip()
-    intent, confidence, classifier = classify_intent(message)
+    context = _conversation_context(payload)
+    if context.get("active_cif") and context["active_cif"] != cif:
+        context = {}
+    if any(token in _plain(message) for token in (".env", "api key", "api_key", "llm_api_key", "mat khau", "password", "reasoning_content", "system prompt", "private prompt")):
+        intent, confidence, classifier = "OUT_OF_SCOPE", 1.0, "security_boundary"
+    else:
+        if _CUSTOMER_CIF_RE.search(message) and any(token in _plain(message) for token in _DECISION_WORDS):
+            # An explicit customer decision question wins over a mixed conceptual
+            # phrase; the accepted Decision Core remains authoritative.
+            intent, confidence, classifier = "DECISION_EXPLANATION", 0.99, "customer_decision_anchor"
+        else:
+            resolved = _resolve_followup(message, context)
+            if resolved:
+                intent, confidence, classifier = resolved, 0.98, "bounded_conversation_context"
+            elif context and any(token in _plain(message) for token in _FOLLOWUP_WORDS):
+                intent, confidence, classifier = "AMBIGUOUS_FOLLOWUP", 1.0, "clarification_boundary"
+            elif _plain(message).strip(" ?!.,") in ("vi sao", "sao"):
+                intent, confidence, classifier = "AMBIGUOUS_FOLLOWUP", 1.0, "clarification_boundary"
+            else:
+                intent, confidence, classifier = classify_intent(message)
     router_ms = (time.perf_counter() - router_start) * 1000
     timings = {"router_ms": round(router_ms, 2), "tool_ms": 0.0, "model_ms": 0.0, "total_ms": 0.0}
     tool_durations: list[float] = []
@@ -240,6 +300,11 @@ def route_copilot(payload: dict[str, Any], caller: ToolCaller) -> dict[str, Any]
             return caller(name, args)
         finally:
             tool_durations.append((time.perf_counter() - call_started) * 1000)
+    if intent == "AMBIGUOUS_FOLLOWUP":
+        result = _response(cif, "AMBIGUOUS_FOLLOWUP", "Anh/Chị muốn hỏi tiếp về quyết định, dòng tiền hay mô phỏng nào?", [], [], None, "LOCAL", timings, None)
+        result["metadata"].update({"confidence": 1.0, "classifier": "clarification_boundary"})
+        result["question_intent"] = "AMBIGUOUS_FOLLOWUP"
+        return result
     if intent == "GREETING_HELP":
         result = _response(cif, intent, "Chào bạn. Tôi có thể hỗ trợ giải thích quyết định thu hồi, dòng tiền, cam kết thanh toán, tuyến CALL/CBS và mô phỏng tình huống khi dữ liệu thay đổi.", [], [], None, "LOCAL", timings, None)
         result["metadata"].update({"confidence": confidence, "classifier": classifier}); result["metadata"]["total_ms"] = round((time.perf_counter()-started)*1000, 2); return result
@@ -253,7 +318,10 @@ def route_copilot(payload: dict[str, Any], caller: ToolCaller) -> dict[str, Any]
     tools: list[str] = []; tool_start = time.perf_counter()
     if intent == "SIMULATION":
         runtime = AgentRuntime(timed_caller, maas_client_from_env(timeout_seconds=8))
-        result = runtime.invoke("SIMULATE", cif, message, _simulation_changes(message, payload.get("changes", {}) if isinstance(payload.get("changes", {}), dict) else {})).to_dict()
+        incoming_changes = payload.get("changes", {}) if isinstance(payload.get("changes", {}), dict) else {}
+        if not incoming_changes and isinstance(context.get("last_simulation_changes"), dict):
+            incoming_changes = context["last_simulation_changes"]
+        result = runtime.invoke("SIMULATE", cif, message, _simulation_changes(message, incoming_changes)).to_dict()
         tools = result.get("tools_used", []); path = "MAAS_GLM" if result.get("canonical_model") else "FALLBACK"
     elif intent == "DECISION_EXPLANATION":
         runtime = AgentRuntime(timed_caller, maas_client_from_env(timeout_seconds=8))

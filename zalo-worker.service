@@ -1,0 +1,31 @@
+[Unit]
+Description=MSB Zalo Bot Platform direct polling worker
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/msb-collection-copilot
+Environment=PYTHONPATH=/opt/msb-collection-copilot/src
+Environment=SYNTHETIC_DATA_DIR=/opt/msb-collection-copilot/build/synthetic-data
+Environment=ZALO_BOT_TOKEN_FILE=/root/.config/msb-collection/zalo-bot-token
+Environment=ZALO_INBOUND_SHARED_SECRET_FILE=/root/.config/msb-collection/zalo-inbound-shared-secret
+Environment=MSB_ZALO_INBOUND_URL=http://127.0.0.1:18080/demo/zalo/inbound
+Environment=MSB_ZALO_POLL_TIMEOUT=30
+Environment=MSB_ZALO_HEARTBEAT_FILE=/opt/msb-collection-copilot/.zalo-worker-heartbeat
+ExecStart=/root/miniconda3/bin/python3.14 /opt/msb-collection-copilot/zalo_worker.py
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/msb-collection-copilot
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

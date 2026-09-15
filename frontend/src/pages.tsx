@@ -1,19 +1,20 @@
 import React, {useEffect, useState} from 'react';
-import {Activity, ArrowRight, BarChart3, ChevronRight, LayoutDashboard, LogOut, MessageCircle, ShieldCheck, UserRound} from 'lucide-react';
+import {Activity, ArrowRight, BarChart3, ChevronRight, LayoutDashboard, LogOut, MessageCircle, Radio, ShieldCheck, UserRound} from 'lucide-react';
 
-export type Page = 'overview' | 'priority' | 'customer' | 'impact' | 'system-overview';
+export type Page = string;
 export const primaryNav = [
   {page:'overview', label:'Tổng quan', icon:LayoutDashboard},
   {page:'priority', label:'Danh sách ưu tiên', icon:Activity},
   {page:'customer', label:'Khách hàng', icon:UserRound},
   {page:'impact', label:'Tác động dự kiến', icon:BarChart3},
+  {page:'zalo', label:'Điều khiển Demo Zalo', icon:Radio},
 ] as const;
 const routeLabel = (route:string) => ({CALL:'Tác nghiệp CALL', CBS:'Tác nghiệp CBS'}[route] || 'Khác');
 const actionLabel = (action:string) => ({WAIT:'Chờ theo dõi',WAIT_SELF_CURE:'Chờ khách hàng tự thanh toán',CONTACT:'Liên hệ khách hàng',REMIND:'Nhắc thanh toán',PTP_FOLLOW_UP:'Theo dõi cam kết',PTP_RECOVERY:'Xử lý cam kết không thực hiện',PARTIAL_PAYMENT:'Theo dõi thanh toán một phần',CALLBACK:'Gọi lại theo lịch',VERIFY_CONTACT:'Xác minh liên hệ',ESCALATE:'Chuyển mức xử lý'}[action] || 'Chưa có đề xuất');
 const money = (n:number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 export function Sidebar({page,cif,setPage,open,setCopilot,logout}:any) {
   return <aside className="sidebar"><a className="brand" href="/" aria-label="Về trang giới thiệu MSB Trợ lý Thu hồi Nợ"><div className="msb">MSB</div><div><b>Trợ lý Thu hồi Nợ</b><span>Powered by GreenNode AI</span></div></a>
-    <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
+    <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):target==='zalo'?(window.history.pushState({},'', '/app/zalo'),window.dispatchEvent(new PopStateEvent('popstate'))):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
     <div className="sidebar-separator assistant-separator"/>
     <button className="assistant-cta" onClick={()=>setCopilot(true)}><MessageCircle size={19}/><span><b>Trợ lý Thu hồi Nợ</b><small>Hỏi về quyết định</small></span><ArrowRight size={15}/></button>
     {logout&&<button className="logout-button" onClick={logout}><LogOut size={16}/> Đăng xuất</button>}

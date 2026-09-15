@@ -180,7 +180,11 @@ class ClassifierTest(unittest.TestCase):
 class ServiceBehaviorTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.service = build_service()
+        # Service behavior tests are deterministic unit/in-process checks.  Do
+        # not let a developer's .env select a live external vDB for this
+        # fixture; live GreenNode proof is covered separately by TASK-011H-A.
+        local_config = KnowledgeRagConfig(grennode_vdb_endpoint=None, grennode_vdb_index=None)
+        cls.service = build_service(config=local_config)
 
     def test_answer_structure(self):
         answer = self.service.answer("Phân tuyến CALL và CBS dựa vào điều kiện nào?")
@@ -231,6 +235,26 @@ class ServiceBehaviorTest(unittest.TestCase):
         self.assertTrue(status["DECISION_CORE_UNCHANGED"])
         self.assertEqual(status["COPILOT_INTEGRATION"], "NO")
         self.assertEqual(status["DEPLOY"], "NO")
+
+    def test_gate_status_flags_for_configured_live_store(self):
+        class ConfiguredLiveStore(InProcessMockVectorStore):
+            def is_live(self):
+                return True
+
+        config = KnowledgeRagConfig(
+            grennode_vdb_endpoint="https://configured.example",
+            grennode_vdb_index="msb-collection-knowledge-v2",
+        )
+        service = KnowledgeRagService(config=config, store=ConfiguredLiveStore())
+        service.index_all()
+        status = service.gate_status()
+        self.assertEqual(status["GRENNODE_VDB_AVAILABLE"], "PASS")
+        self.assertEqual(status["LIVE_VDB_INGEST"], "PASS")
+        self.assertEqual(status["LIVE_VDB_RETRIEVAL"], "PASS")
+        self.assertEqual(status["LIVE_QWEN_RAG"], "NOT_RUN")
+        self.assertEqual(status["PROJECT_KNOWLEDGE_RAG_LIVE"], "NOT_PROVEN")
+        self.assertEqual(status["INFERENCE_ANCHOR"], "LIVE_GREENNODE_VDB")
+        self.assertTrue(status["DECISION_CORE_UNCHANGED"])
 
 
 class MaaSEmbeddingProbeTest(unittest.TestCase):

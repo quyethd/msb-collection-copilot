@@ -1,6 +1,6 @@
 """Authenticated local HTTP adapter for the accepted TASK-006 tool layer + TASK-008B demo routes."""
 from __future__ import annotations
-import hmac, json, logging, os, re, secrets, threading, time
+import hmac, json, os, re, secrets, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from msb_tools.registry import invoke_tool
@@ -11,32 +11,21 @@ from msb_tools.errors import ToolFailure
 from msb_tools.repository import ToolRepository
 from msb_agent.copilot import route_copilot
 from msb_impact.engine import build_impact_report
-from msb_zalo.bridge import ZaloBridge
-from msb_zalo.client import ZaloBotClient
 
 _demo_engine: DemoEventEngine | None = None
 _repository: ToolRepository | None = None
 _repository_lock = threading.Lock()
 _sessions: set[str] = set()
 _sessions_lock = threading.Lock()
-_zalo_bridge: ZaloBridge | None = None
-_zalo_client: ZaloBotClient | None = None
-_logger = logging.getLogger(__name__)
 _DEMO_CIF = re.compile(r"(?:SYN\d{6}|GOLDEN_G\d{2})\Z")
 _BROWSER_POST_ROUTES = frozenset({
     "/demo/customer-360", "/demo/next-best-action", "/demo/simulate",
     "/demo/events", "/demo/copilot", "/demo/portfolio", "/demo/impact",
-    "/demo/zalo/recipient", "/demo/zalo/reset-recipient", "/demo/zalo/send-morning-brief",
 })
-_DEFAULT_ZALO_TOKEN_FILE = "/root/.config/msb-collection/zalo-bot-token"
-_DEFAULT_ZALO_SECRET_FILE = "/root/.config/msb-collection/zalo-inbound-shared-secret"
-_DEFAULT_ZALO_HEARTBEAT_FILE = str(Path(__file__).resolve().parent / ".zalo-worker-heartbeat")
 
 
 def is_browser_safe_demo_route(method: str, path: str) -> bool:
     if method == "POST" and path in _BROWSER_POST_ROUTES:
-        return True
-    if method == "GET" and path in {"/demo/zalo/status", "/demo/zalo/preview"}:
         return True
     prefix = "/demo/timeline/" if method == "GET" else "/demo/reset/" if method == "POST" else None
     return bool(prefix and path.startswith(prefix) and re.fullmatch(r"[^/?#]+", path[len(prefix):]))
@@ -57,51 +46,6 @@ def _get_demo_engine() -> DemoEventEngine:
         repo = _get_repository()
         _demo_engine = DemoEventEngine(repo)
     return _demo_engine
-
-
-def _get_zalo_bridge() -> ZaloBridge:
-    global _zalo_bridge
-    if _zalo_bridge is None:
-        repository = _get_repository()
-        with _repository_lock:
-            if _zalo_bridge is None:
-                _zalo_bridge = ZaloBridge(repository, _zalo_sender)
-    return _zalo_bridge
-
-
-def _get_zalo_client() -> ZaloBotClient:
-    global _zalo_client
-    if _zalo_client is None:
-        with _repository_lock:
-            if _zalo_client is None:
-                _zalo_client = ZaloBotClient(
-                    token_file=os.environ.get("ZALO_BOT_TOKEN_FILE", _DEFAULT_ZALO_TOKEN_FILE)
-                )
-    return _zalo_client
-
-
-def _zalo_sender(target_id: str, text: str) -> dict:
-    return _get_zalo_client().send_message(target_id, text)
-
-
-def _zalo_secret() -> str:
-    path = Path(os.environ.get("ZALO_INBOUND_SHARED_SECRET_FILE", ""))
-    if path.is_file():
-        value = path.read_text(encoding="utf-8").strip()
-        if value:
-            return value
-    return os.environ.get("ZALO_INBOUND_SHARED_SECRET", "")
-
-
-def _zalo_worker_alive() -> bool:
-    path = Path(os.environ.get("MSB_ZALO_HEARTBEAT_FILE", _DEFAULT_ZALO_HEARTBEAT_FILE))
-    try:
-        if path.is_file():
-            data = json.loads(path.read_text(encoding="utf-8"))
-            return bool(data.get("ts")) and time.time() - float(data["ts"]) < 45
-    except (ValueError, TypeError, json.JSONDecodeError):
-        pass
-    return False
 
 
 def _invoke_copilot(payload: dict) -> dict:
@@ -127,24 +71,6 @@ def _demo_session_cookie(token: str, secure: bool = False) -> str:
     return f"msb_demo_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800{suffix}"
 
 
-def _read_json_object(handler: BaseHTTPRequestHandler) -> dict | None:
-    """Read a request body and fail closed for valid non-object JSON values."""
-    try:
-        body = json.loads(handler.rfile.read(int(handler.headers.get("Content-Length", "0"))))
-    except (ValueError, json.JSONDecodeError):
-        handler._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}})
-        return None
-    if not isinstance(body, dict):
-        handler._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}})
-        return None
-    return body
-
-
-def _log_bridge_failure(operation: str, error: Exception) -> None:
-    # Log only the exception class; exception text can contain provider URLs or other internals.
-    _logger.warning("Zalo bridge %s failed (%s)", operation, type(error).__name__)
-
-
 class ToolHandler(BaseHTTPRequestHandler):
     server_version = "MSBCollectionTool/0.4"
 
@@ -160,12 +86,6 @@ class ToolHandler(BaseHTTPRequestHandler):
     def _require_auth(self) -> bool:
         if not self._authed():
             self._send(401, {"error": {"code": "UNAUTHORIZED", "message": "Valid bearer authentication required"}})
-            return False
-        return True
-
-    def _require_demo_session(self) -> bool:
-        if not self._demo_session_valid():
-            self._send(401, {"error": {"code": "UNAUTHORIZED", "message": "Demo session required"}})
             return False
         return True
 
@@ -211,9 +131,8 @@ class ToolHandler(BaseHTTPRequestHandler):
             self._send(200, {"status": "healthy"}); return
         if self._handle_auth_get(): return
         browser_demo = is_browser_safe_demo_route("GET", self.path)
-        if self.path.startswith("/demo/zalo/") and not self._require_demo_session(): return
         if not browser_demo and not self._require_auth(): return
-        if browser_demo and not self.path.startswith("/demo/zalo/") and not self._validate_demo_request({}): return
+        if browser_demo and not self._validate_demo_request({}): return
         if self.path.startswith("/demo/timeline/"):
             cif = self.path[len("/demo/timeline/"):]
             try:
@@ -223,12 +142,6 @@ class ToolHandler(BaseHTTPRequestHandler):
                 status = 404 if error.code == "NOT_FOUND" else 400
                 self._send(status, {"error": {"code": error.code, "message": error.message}})
             return
-        if self.path == "/demo/zalo/status":
-            status = _get_zalo_bridge().status()
-            status["worker_alive"] = _zalo_worker_alive()
-            self._send(200, status); return
-        if self.path == "/demo/zalo/preview":
-            self._send(200, _get_zalo_bridge().preview()); return
         self._send(404, {"error": {"code": "NOT_FOUND", "message": "Route not found"}})
 
     def do_POST(self) -> None:
@@ -239,43 +152,6 @@ class ToolHandler(BaseHTTPRequestHandler):
                 _sessions.discard(token)
             encoded = json.dumps({"authenticated": False}).encode()
             self.send_response(200); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(encoded))); self.send_header("Set-Cookie", "msb_demo_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"); self.end_headers(); self.wfile.write(encoded)
-            return
-        if self.path == "/demo/zalo/inbound":
-            expected = _zalo_secret()
-            supplied = self.headers.get("X-Zalo-Bridge-Secret", "")
-            if not expected or not hmac.compare_digest(supplied, expected):
-                self._send(401, {"error": {"code": "UNAUTHORIZED", "message": "Inbound bridge authorization required"}}); return
-            body = _read_json_object(self)
-            if body is None: return
-            update_key = body.get("update_key")
-            key = str(update_key) if update_key is not None else None
-            if key is not None:
-                cached = _get_zalo_bridge().lookup(key)
-                if cached is not None:
-                    self._send(200, cached)
-                    return
-            try:
-                result = _get_zalo_bridge().pair_from_inbound(body.get("target_id", ""), body.get("text", ""), update_key=key)
-                self._send(200, {"status": "accepted", "connection_status": result["connection_status"]})
-                return
-            except PermissionError as error:
-                text = body.get("text", "")
-                if isinstance(text, str) and text.strip().upper() != "MSB DEMO":
-                    try:
-                        result = _get_zalo_bridge().handle_inbound(body.get("target_id", ""), text, body.get("conversation_context"), update_key=key)
-                        self._send(200, result)
-                    except PermissionError as error:
-                        _log_bridge_failure("inbound authorization", error)
-                        self._send(403, {"error": {"code": "TARGET_NOT_PAIRED", "message": "Unknown Zalo target"}})
-                    except RuntimeError as error:
-                        _log_bridge_failure("inbound processing", error)
-                        self._send(503, {"error": {"code": "ZALO_BRIDGE_UNAVAILABLE", "message": "Zalo bridge is temporarily unavailable"}})
-                else:
-                    _log_bridge_failure("pairing", error)
-                    self._send(403, {"error": {"code": "PAIRING_REQUIRED", "message": "Approved pairing phrase required"}})
-            except ValueError as error:
-                _log_bridge_failure("inbound validation", error)
-                self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "Approved Zalo target ID and text are required"}})
             return
         if self.path == "/demo/auth/login":
             try: body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
@@ -294,15 +170,13 @@ class ToolHandler(BaseHTTPRequestHandler):
             self.send_response(200); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(encoded))); self.send_header("Set-Cookie", _demo_session_cookie(token, self._https_request())); self.end_headers(); self.wfile.write(encoded)
             return
         browser_demo = is_browser_safe_demo_route("POST", self.path)
-        if self.path.startswith("/demo/zalo/"):
-            if not self._require_demo_session(): return
-        elif not browser_demo and not self._require_auth(): return
+        if not browser_demo and not self._require_auth(): return
         try: body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
         except (ValueError, json.JSONDecodeError):
             self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}}); return
         if not isinstance(body, dict):
             self._send(400, {"error": {"code": "INVALID_ARGUMENT", "message": "JSON object required"}}); return
-        if browser_demo and not self.path.startswith("/demo/zalo/") and not self._validate_demo_request(body): return
+        if browser_demo and not self._validate_demo_request(body): return
         if self.path in {"/demo/customer-360", "/demo/next-best-action"}:
             cif = _demo_cif(body)
             if cif is None:
@@ -323,20 +197,6 @@ class ToolHandler(BaseHTTPRequestHandler):
             self._handle_demo_event(body); return
         if self.path == "/demo/copilot":
             self._send(200, _invoke_copilot(body)); return
-        if self.path == "/demo/zalo/recipient":
-            self._send(200, _get_zalo_bridge().configure(body)); return
-        if self.path == "/demo/zalo/reset-recipient":
-            self._send(200, _get_zalo_bridge().reset_recipient()); return
-        if self.path == "/demo/zalo/send-morning-brief":
-            try:
-                self._send(200, _get_zalo_bridge().send_morning_brief())
-            except PermissionError as error:
-                _log_bridge_failure("morning brief authorization", error)
-                self._send(409, {"error": {"code": "TARGET_NOT_PAIRED", "message": "Approved Zalo target required before sending"}})
-            except RuntimeError as error:
-                _log_bridge_failure("morning brief send", error)
-                self._send(503, {"error": {"code": "ZALO_SEND_UNAVAILABLE", "message": "Zalo sending is temporarily unavailable"}})
-            return
         if self.path == "/demo/portfolio":
             repo = _get_repository()
             rows = repo.portfolio()

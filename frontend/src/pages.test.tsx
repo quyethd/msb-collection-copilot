@@ -6,14 +6,14 @@ import {describe,it,expect,vi} from 'vitest';
 import {Sidebar,Overview,Priority,primaryNav,chartCounts} from './pages';
 const rows=[{cif:'SYN002846',total_outstanding_cif:273000000,max_dpd_cif:11,recovery_opportunity_score:47,final_route:'CALL',nba:{treatment:'WAIT_SELF_CURE',channel:'NONE'}},{cif:'SYN000001',total_outstanding_cif:100,max_dpd_cif:20,recovery_opportunity_score:50,final_route:'CBS',nba:{treatment:'CONTACT',channel:'CALL'}}];
 describe('Final primary navigation',()=>{
-  it('contains the four real operational pages and the protected Zalo control',()=>{
-    expect(primaryNav.map(x=>x.page)).toEqual(['overview','priority','customer','impact','zalo']);
-    expect(primaryNav.map(x=>x.label)).toEqual(['Tổng quan','Danh sách ưu tiên','Khách hàng','Tác động dự kiến','Điều khiển Demo Zalo']);
+  it('contains exactly the four real operational pages',()=>{
+    expect(primaryNav.map(x=>x.page)).toEqual(['overview','priority','customer','impact']);
+    expect(primaryNav.map(x=>x.label)).toEqual(['Tổng quan','Danh sách ưu tiên','Khách hàng','Tác động dự kiến']);
   });
   for(const page of primaryNav.map(x=>x.page)) it(`only ${page} is active`,()=>{
     const html=renderToStaticMarkup(<Sidebar page={page}/>);
     const node=document.createElement('div');node.innerHTML=html;
-    expect(node.querySelectorAll('nav button')).toHaveLength(5);
+    expect(node.querySelectorAll('nav button')).toHaveLength(4);
     expect(node.querySelectorAll('nav [aria-current="page"]')).toHaveLength(1);
     expect(node.querySelector('nav [aria-current="page"]')?.textContent).toBe(primaryNav.find(x=>x.page===page)?.label);
     expect(node.querySelector('.assistant-cta.active')).toBeNull();

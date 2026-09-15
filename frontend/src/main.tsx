@@ -7,7 +7,6 @@ import './navigation.css';
 import './pages/system-overview/system-overview.css';
 import './public.css';
 import {Sidebar,Header,Overview,Priority,type Page} from './pages';
-import {SystemOverviewPage} from './pages/system-overview/SystemOverviewPage';
 import {ZaloDemo} from './zalo-demo';
 import {pageFromPath,pathForPage} from './app-routing';
 import {LoginPage,PublicLanding} from './public-pages';

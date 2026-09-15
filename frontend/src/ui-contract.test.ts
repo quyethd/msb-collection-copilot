@@ -38,10 +38,9 @@ describe('TASK-009 demo UI contract',()=>{
     expect(routing).toContain("'/app/priority'");
     expect(routing).toContain("'/app/zalo'");
   });
-  it('uses the system overview as the public landing and keeps the app shell operational',()=>{
-    expect(source).toContain("import {SystemOverviewPage} from './pages/system-overview/SystemOverviewPage';");
+  it('keeps the public landing separate and the app shell operational',()=>{
     expect(source).toContain('return <PublicLanding/>');
-    expect(readFileSync(resolve(__dirname,'public-pages.tsx'),'utf8')).toContain('<SystemOverviewPage');
+    expect(readFileSync(resolve(__dirname,'public-pages.tsx'),'utf8')).toContain('story-hero');
     expect(readFileSync(resolve(__dirname,'pages.tsx'),'utf8')).not.toContain('secondary-navitem');
   });
   it('uses browser-safe demo routes for protected data',()=>{

@@ -34,6 +34,17 @@ describe('Final primary navigation',()=>{
     expect(node.querySelector('.brand')?.tagName).toBe('A');
     expect(node.querySelector('.logout-button')).toBeNull();
   });
+  it('routes every sidebar destination through the shared navigation callback',async()=>{
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;
+    const node=document.createElement('div');document.body.append(node);const root=createRoot(node);const setPage=vi.fn();
+    await act(async()=>root.render(<Sidebar page="zalo" cif="SYN002846" setPage={setPage} open={vi.fn()} setCopilot={vi.fn()}/>));
+    const buttons=Array.from(node.querySelectorAll('nav button')) as HTMLButtonElement[];
+    await act(async()=>buttons[0].click());
+    await act(async()=>buttons[4].click());
+    expect(setPage).toHaveBeenNthCalledWith(1,'overview');
+    expect(setPage).toHaveBeenNthCalledWith(2,'zalo');
+    await act(async()=>root.unmount());node.remove();
+  });
   it('overview has two actual-data charts and no priority table',()=>{
     const html=renderToStaticMarkup(<Overview portfolio={rows} summary={{}} open={()=>{}} loading={false}/>);
     expect(html.match(/class="panel distribution"/g)).toHaveLength(2);

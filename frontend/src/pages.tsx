@@ -14,7 +14,7 @@ const actionLabel = (action:string) => ({WAIT:'Chờ theo dõi',WAIT_SELF_CURE:'
 const money = (n:number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 export function Sidebar({page,cif,setPage,open,setCopilot,logout}:any) {
   return <aside className="sidebar"><a className="brand" href="/" aria-label="Về trang giới thiệu MSB Trợ lý Thu hồi Nợ"><div className="msb">MSB</div><div><b>Trợ lý Thu hồi Nợ</b><span>Powered by GreenNode AI</span></div></a>
-    <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):target==='zalo'?(window.history.pushState({},'', '/app/zalo'),window.dispatchEvent(new PopStateEvent('popstate'))):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
+    <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
     <div className="sidebar-separator assistant-separator"/>
     <button className="assistant-cta" onClick={()=>setCopilot(true)}><MessageCircle size={19}/><span><b>Trợ lý Thu hồi Nợ</b><small>Hỏi về quyết định</small></span><ArrowRight size={15}/></button>
     {logout&&<button className="logout-button" onClick={logout}><LogOut size={16}/> Đăng xuất</button>}

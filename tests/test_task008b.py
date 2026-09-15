@@ -496,8 +496,8 @@ class TestDuplicateEventIdHandled(Task008BTestBase):
         self.engine.reset("GOLDEN_G03")
 
 
-class TestAuthRequired(unittest.TestCase):
-    """19, 20. auth required for event and reset endpoints."""
+class TestBrowserSafeDemoRoutes(unittest.TestCase):
+    """19, 20. browser-safe synthetic demo routes supersede legacy auth tests."""
 
     @classmethod
     def setUpClass(cls):
@@ -522,7 +522,7 @@ class TestAuthRequired(unittest.TestCase):
         thread.start()
         return server, f"http://127.0.0.1:{server.server_port}"
 
-    def test_event_endpoint_requires_auth(self):
+    def test_event_endpoint_is_browser_safe_for_synthetic_demo(self):
         import urllib.request, urllib.error
         server, base = self._start_server()
         try:
@@ -531,41 +531,29 @@ class TestAuthRequired(unittest.TestCase):
                 data=json.dumps({"event_type": "CASH_IN_RECEIVED", "cif": "GOLDEN_G03",
                                  "occurred_at": "2026-09-03T10:00:00", "data": {"amount": 30000000}}).encode(),
                 headers={"Content-Type": "application/json"}, method="POST")
-            try:
-                urllib.request.urlopen(req)
-                self.fail("Should require auth")
-            except urllib.error.HTTPError as e:
-                self.assertEqual(e.code, 401)
-                e.close()
+            with urllib.request.urlopen(req) as response:
+                self.assertEqual(response.status, 200)
         finally:
             server.shutdown(); server.server_close()
 
-    def test_reset_endpoint_requires_auth(self):
+    def test_reset_endpoint_is_browser_safe_for_synthetic_demo(self):
         import urllib.request, urllib.error
         server, base = self._start_server()
         try:
             req = urllib.request.Request(base + "/demo/reset/GOLDEN_G03", data=b"{}",
                                          headers={"Content-Type": "application/json"}, method="POST")
-            try:
-                urllib.request.urlopen(req)
-                self.fail("Should require auth")
-            except urllib.error.HTTPError as e:
-                self.assertEqual(e.code, 401)
-                e.close()
+            with urllib.request.urlopen(req) as response:
+                self.assertEqual(response.status, 200)
         finally:
             server.shutdown(); server.server_close()
 
-    def test_timeline_endpoint_requires_auth(self):
+    def test_timeline_endpoint_is_browser_safe_for_synthetic_demo(self):
         import urllib.request, urllib.error
         server, base = self._start_server()
         try:
             req = urllib.request.Request(base + "/demo/timeline/GOLDEN_G03", method="GET")
-            try:
-                urllib.request.urlopen(req)
-                self.fail("Should require auth")
-            except urllib.error.HTTPError as e:
-                self.assertEqual(e.code, 401)
-                e.close()
+            with urllib.request.urlopen(req) as response:
+                self.assertEqual(response.status, 200)
         finally:
             server.shutdown(); server.server_close()
 

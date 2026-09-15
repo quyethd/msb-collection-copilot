@@ -33,8 +33,10 @@ describe('TASK-009 demo UI contract',()=>{
   it('marks only the actual page item active',()=>{
     const pages=readFileSync(resolve(__dirname,'pages.tsx'),'utf8');
     expect(pages).toContain("aria-current={page===target?'page':undefined}");
-    expect(source).toContain('useState<Page>(pageFromPath)');
-    expect(source).toContain("'/app/priority':'priority'");
+    const routing=readFileSync(resolve(__dirname,'app-routing.ts'),'utf8');
+    expect(source).toContain("import {pageFromPath,pathForPage} from './app-routing';");
+    expect(routing).toContain("'/app/priority'");
+    expect(routing).toContain("'/app/zalo'");
   });
   it('uses the system overview as the public landing and keeps the app shell operational',()=>{
     expect(source).toContain("import {SystemOverviewPage} from './pages/system-overview/SystemOverviewPage';");

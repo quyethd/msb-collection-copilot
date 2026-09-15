@@ -166,5 +166,101 @@ DEPLOY=PENDING
 TASK_014_AUTHORIZED=NO
 ```
 
-Production gates and the final closeout status are appended after deployment
-validation. No production claim is made by this pre-deploy section.
+## Commit, deployment, and production proof
+
+```text
+TASK013_FINAL_CORRECTIVE_COMMIT=26afe71
+ROLLBACK_PLAN_READY=YES
+FRONTEND_DEPLOY=PASS
+BACKEND_DEPLOY=PASS (service switched to committed master checkout)
+ZALO_WORKER_DEPLOY=PASS (service switched to committed master checkout)
+PRODUCTION_BACKUP=/www/wwwroot/msb-collection-copilot.duckdns.org.backup-20260915T115145Z
+```
+
+The active backend and worker were backed up, updated using the repository’s
+existing service definitions, reloaded, and restarted. Both are active. No
+OpenClaw runtime, sidecar `18081`, DNS, TLS, or GreenNode configuration was
+changed.
+
+Public TLS validation used the required hostname-preserving `--resolve` method
+without `-k`/`--insecure`. Landing, login, health, and all five app paths
+returned HTTP 200.
+
+```text
+PUBLIC_TLS=PASS
+PUBLIC_LANDING=PASS
+PUBLIC_LOGIN=PASS
+PRODUCTION_NAV_APP_TO_ZALO=PASS
+PRODUCTION_NAV_ZALO_TO_APP=PASS
+PRODUCTION_NAVIGATION_REQUIRES_REFRESH=NO
+PRODUCTION_BRAND_LINK_FROM_ZALO=PASS
+PRODUCTION_LOGO_TO_LANDING=PASS
+PRODUCTION_SESSION_PRESERVED=PASS
+```
+
+Fresh authenticated browser QA passed all four app→Zalo directions, all four
+Zalo→app directions, direct authenticated `/app/zalo`, brand→landing, and
+return to `/app` without a login prompt.
+
+Production Web Copilot gate:
+
+```text
+PRODUCTION_WEB_COPILOT=PASS
+PRODUCTION_EXACT_FAILED_PHRASE=PASS
+PRODUCTION_SHORT_FAILED_PHRASE=PASS
+PRODUCTION_FOLLOWUP_SIMULATION=PASS
+PRODUCTION_SIMULATION_AFTER_STATE=PASS
+```
+
+Both phrases produced `{"inflow_7d": 0}`, baseline
+`WAIT_SELF_CURE / NONE`, and simulation after-state `CONTACT / CALL`. The
+follow-up also returned `CONTACT / CALL`.
+
+Production business and knowledge checks passed:
+
+```text
+PRODUCTION_SYN002846=PASS
+PRODUCTION_SYN000746_SCORE=69
+PRODUCTION_BUSINESS_SEMANTICS_DRIFT=0
+PRODUCTION_KNOWLEDGE=PASS
+PRODUCTION_ZALO_TRANSPORT=PASS
+PRODUCTION_ZALO_CONVERSATION=PASS
+PRODUCTION_ZALO_LIVE_ROUNDTRIP=PENDING_OPERATOR
+DUPLICATE_REPLY_COUNT=0
+CONTEXT_CIF_LEAK=0
+RAW_ENUM_LEAK=0
+RAW_JSON_LEAK=0
+RAW_NONE_LEAK=0
+```
+
+Production security boundary passed: browser-safe synthetic `/demo` routes
+worked without Bearer, an unknown `/demo` mutation returned 401, protected
+`/tools/get_customer_360` returned 401 for missing/wrong credentials and 200
+for the configured valid credential, and no frontend build asset contained a
+server API key or token.
+
+```text
+PRODUCTION_BROWSER_SAFE_DEMO=PASS
+PRODUCTION_PROTECTED_TOOL_AUTH=PASS
+PRODUCTION_SECRET_BOUNDARY=PASS
+PRODUCTION_POLICY_OVERRIDE=BLOCKED
+FRONTEND_API_KEY_PRESENT=NO
+SECRET_SCAN=PASS
+TOKEN_LEAK_COUNT=0
+SIDECAR_18081=ABSENT
+```
+
+## Final status
+
+```text
+VERY_AUDIT=PASS
+ROLLBACK_REQUIRED=NO
+TASK_013_CLOSED=YES
+TASK_014_AUTHORIZED=NO
+PUSH=NO
+```
+
+The operator-only live Zalo roundtrip remains explicitly pending and is not
+converted to a false pass. No TASK-014 work was started. Per the requested
+authorization boundary, no separate closeout-report commit was created while
+TASK-014 remains unauthorized.

@@ -40,6 +40,19 @@ _SECURITY_WORDS = (
 
 _FOLLOWUP_WORDS = ("vi sao", "vì sao", "the con", "thế còn", "vay nen lam gi", "vậy nên làm gì", "lien quan gi", "liên quan gì")
 _CUSTOMER_CIF_RE = re.compile(r"\b(?:SYN\d{6}|GOLDEN_G\d{2})\b", re.IGNORECASE)
+_INFLOW_7D_ZERO_PATTERNS = tuple(re.compile(pattern) for pattern in (
+    r"\b(?:tien vao|dong tien) 7 ngay (?:bang|la) 0\b",
+    r"\bkhong co (?:tien vao|dong tien) 7 ngay\b",
+    r"\b7 ngay toi khong co (?:tien vao|dong tien)\b",
+    r"\b(?:tien vao|dong tien) tuan nay (?:bang|la) 0\b",
+    r"\bkhong co (?:tien vao|dong tien) tuan nay\b",
+    r"\btuan nay khong co (?:tien vao|dong tien)\b",
+    r"\bdong tien 7 ngay khong co tien\b",
+))
+
+
+def _mentions_zero_inflow_7d(text: str) -> bool:
+    return any(pattern.search(text) for pattern in _INFLOW_7D_ZERO_PATTERNS)
 
 
 def _conversation_context(payload: dict[str, Any]) -> dict[str, Any]:
@@ -95,7 +108,7 @@ def classify_intent(message: str) -> tuple[str, float, str]:
         return "OUT_OF_SCOPE", 0.99, "deterministic"
     if any(x in text for x in _KNOWLEDGE_MARKERS):
         return "KNOWLEDGE", 0.97, "deterministic"
-    if any(x in text for x in ("neu ", "gia su", "mo phong", "tinh huong", "what if", "thay doi")):
+    if _mentions_zero_inflow_7d(text) or any(x in text for x in ("neu ", "gia su", "mo phong", "tinh huong", "what if", "thay doi")):
         return "SIMULATION", 0.98, "deterministic"
     if any(x in text for x in ("cam ket", "ptp", "hua tra", "hứa trả")):
         return "PTP", 0.96, "deterministic"
@@ -258,7 +271,7 @@ def _knowledge_response(
 def _simulation_changes(message: str, changes: dict[str, Any]) -> dict[str, Any]:
     result = dict(changes)
     text = _plain(message)
-    if "dong tien 7 ngay" in text and ("bang 0" in text or "khong co tien" in text):
+    if _mentions_zero_inflow_7d(text):
         result.setdefault("inflow_7d", 0)
     if "cam ket thanh toan" in text and ("pha vo" in text or "bi pha" in text):
         result.setdefault("ptp_state", "BROKEN")

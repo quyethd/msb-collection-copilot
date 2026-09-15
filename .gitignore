@@ -12,3 +12,11 @@ __pycache__/
 venv/
 *.credentials.json
 src/*.egg-info/
+
+# Zalo worker runtime artifacts
+.zalo-worker-heartbeat
+.zalo-worker.lock
+
+# Deployment artifacts
+logs/
+deploy-backups/

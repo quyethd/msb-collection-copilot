@@ -99,7 +99,6 @@ class ChatMemory:
             if context.get("previous_intent") is not None and context.get("previous_user_question") is not None:
                 break
         if context:
-            context["active_cif"] = "SYN002846"
             context["previous_topic"] = context.get("previous_intent", "")
         return context
 

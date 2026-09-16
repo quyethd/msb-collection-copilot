@@ -17,6 +17,7 @@ from .llm import fast_maas_client_from_env, maas_client_from_env
 from .runtime import AgentRuntime, _format_amount_vn, _tool_data, _tool_ok
 from .models import decision_from_nba
 from . import semantics
+from .planner import plan_conversation, agent_first_enabled
 
 ToolCaller = Callable[[str, dict[str, Any]], dict[str, Any]]
 INTENTS = (
@@ -407,6 +408,36 @@ def _map_canonical_to_web(intent: str) -> str:
     return intent
 
 
+def _resolve_intent_with_planner(message: str, context: dict[str, Any], cif: str) -> tuple[str, float, str, str, str | None, dict[str, Any]] | None:
+    """Agent-first intent resolution using the shared semantic planner.
+
+    Returns (intent, confidence, classifier, resolved_kind, resolved_cif,
+    resolved_changes) when the planner produces an LLM-driven or safety-guard
+    result. Returns None when the planner fell back to the deterministic
+    resolver, signaling the caller to use the existing inline resolution
+    (which includes followup and decision-word logic that the deterministic
+    fallback alone does not cover).
+    """
+    plan = plan_conversation(
+        message, context, channel="web", active_cif_override=cif,
+    )
+    if plan.source == "deterministic_fallback":
+        return None
+    resolved_kind = plan.kind
+    resolved_cif = plan.cif
+    resolved_changes = plan.changes or {}
+    intent = _map_canonical_to_web(plan.intent)
+    if plan.source == "security_guard":
+        intent = "OUT_OF_SCOPE"
+    elif plan.source in ("deterministic_fast_path", "empty_guard") and plan.intent in (semantics.GREETING, semantics.HELP):
+        intent = "GREETING_HELP"
+    elif plan.source == "empty_guard":
+        intent = "OUT_OF_SCOPE"
+    classifier = plan.source
+    confidence = plan.confidence
+    return intent, confidence, classifier, resolved_kind, resolved_cif, resolved_changes
+
+
 def route_copilot(payload: dict[str, Any], caller: ToolCaller) -> dict[str, Any]:
     started = time.perf_counter(); router_start = started
     cif = payload.get("cif"); message = payload.get("message")
@@ -419,7 +450,10 @@ def route_copilot(payload: dict[str, Any], caller: ToolCaller) -> dict[str, Any]
     resolved_kind = ""
     resolved_cif: str | None = None
     resolved_changes: dict[str, Any] = {}
-    if any(token in _plain(message) for token in (".env", "api key", "api_key", "llm_api_key", "mat khau", "password", "reasoning_content", "system prompt", "private prompt")):
+    planner_result = _resolve_intent_with_planner(message, context, cif) if agent_first_enabled() else None
+    if planner_result is not None:
+        intent, confidence, classifier, resolved_kind, resolved_cif, resolved_changes = planner_result
+    elif any(token in _plain(message) for token in (".env", "api key", "api_key", "llm_api_key", "mat khau", "password", "reasoning_content", "system prompt", "private prompt")):
         intent, confidence, classifier = "OUT_OF_SCOPE", 1.0, "security_boundary"
     else:
         # Shared semantic resolver runs first. A high-confidence explicit/global

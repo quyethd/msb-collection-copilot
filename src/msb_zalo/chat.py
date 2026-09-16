@@ -17,6 +17,8 @@ from typing import Any, Callable
 
 from msb_agent.copilot import route_copilot
 from msb_agent.llm import maas_client_from_env
+from msb_agent.planner import plan_conversation, agent_first_enabled
+from msb_agent import semantics as shared_semantics
 from msb_tools.registry import invoke_tool
 from msb_tools.repository import ToolRepository
 
@@ -193,28 +195,11 @@ _WHY_BARE_MARKERS = ("vi sao", "tai sao", "sao vay", "sao the", "vi gi", "ly do 
 
 _PRONOUNS = ("ban", "may", "em", "anh", "chi", "cau", "tao", "minh", "chi minh")
 
-_CALL_TEXT = (
-    "CALL là tuyến xử lý qua gọi điện, hướng tới khách hàng cần tương tác trực tiếp "
-    "để thu hồi. Routing là tuyến xử lý, không đồng nghĩa action phải thực hiện ngay. "
-    "Thuộc tuyến CALL không có nghĩa hôm nay cán bộ nhất thiết phải gọi."
-)
+_CALL_TEXT = shared_semantics.CALL_TEXT
 
-_CBS_TEXT = (
-    "CBS là tuyến nhắc thanh toán và theo dõi cam kết. Routing là tuyến xử lý, "
-    "không đồng nghĩa action phải thực hiện ngay."
-)
+_CBS_TEXT = shared_semantics.CBS_TEXT
 
-_CALL_CBS_COMPARISON = (
-    "CALL và CBS là hai tuyến xử lý (route) trong tác nghiệp thu hồi.\n"
-    "• CALL — tuyến xử lý qua gọi điện, hướng tới khách hàng cần tương tác trực tiếp để thu hồi.\n"
-    "• CBS — tuyến nhắc thanh toán và theo dõi cam kết.\n"
-    "Khác nhau ở hướng tiếp cận: CALL dùng gọi điện để tương tác trực tiếp; CBS nhắc thanh toán "
-    "và theo dõi cam kết.\n"
-    "Routing là tuyến xử lý, không đồng nghĩa action phải thực hiện ngay.\n"
-    "Thuộc tuyến CALL không có nghĩa hôm nay cán bộ nhất thiết phải gọi.\n"
-    "Routing trả lời khách thuộc tuyến nào; treatment trả lời hành động cụ thể hôm nay là gì.\n"
-    "Nguồn: Phân tuyến CALL / CBS (kiến thức dự án)."
-)
+_CALL_CBS_COMPARISON = shared_semantics.CALL_CBS_COMPARISON
 
 _META_IDENTITY = frozenset({
     "ban la ai", "may la ai", "em la ai", "anh la ai", "chi la ai", "cau la ai",
@@ -1191,11 +1176,96 @@ class ZaloConversation:
         if not norm:
             self._last_nlu = NLUResult(intent="UNKNOWN", confidence=1.0, needs_clarification=True)
             return _Intent("FALLBACK", direct=_FALLBACK_TEXT, kind="fallback")
+        if agent_first_enabled():
+            planner_intent = self._classify_with_planner(message, norm)
+            if planner_intent is not None:
+                return planner_intent
         nlu = self._fast_local_intent(message, norm)
         if nlu.confidence < _NLU_LOCAL_CONFIDENCE:
             nlu = self._nlu_interpret(message, norm, nlu)
         self._last_nlu = nlu
         return self._intent_from_nlu(message, nlu)
+
+    def _classify_with_planner(self, message: str, norm: str) -> _Intent | None:
+        """Agent-first classification using the shared semantic planner.
+
+        Returns None when the planner fell back to the deterministic resolver,
+        signaling the caller to use the existing Zalo NLU path (which includes
+        Zalo-specific followup and context logic that the deterministic fallback
+        alone does not cover).
+        """
+        context = {
+            "active_cif": self._memory.active_cif or self._memory.last_cif,
+            "last_cif": self._memory.last_cif,
+            "previous_cif": self._memory.previous_cif,
+            "last_intent": self._memory.last_intent,
+            "last_topic": self._memory.last_topic,
+            "pending_clarification": self._memory.pending_clarification,
+            "last_simulation_context": self._memory.last_simulation_context,
+        }
+        if self._memory.last_worklist:
+            context["last_worklist"] = self._memory.last_worklist
+        plan = plan_conversation(message, context, channel="zalo")
+        if plan.source == "deterministic_fallback":
+            return None
+        self._last_nlu = NLUResult(
+            intent=plan.intent, cif=plan.cif, confidence=plan.confidence,
+            needs_clarification=plan.needs_clarification,
+        )
+        return self._intent_from_plan(message, plan)
+
+    def _intent_from_plan(self, message: str, plan) -> _Intent:
+        """Map a StructuredPlan to the Zalo _Intent taxonomy."""
+        cif = plan.cif
+        changes = plan.changes or _extract_changes(_normalize(message))
+        intent = plan.intent
+        if intent in (shared_semantics.GREETING, shared_semantics.HELP):
+            return _Intent("HELP", direct=f"Chào bạn. {_HELP_TEXT}", kind="help")
+        if intent == shared_semantics.TODAY_WORKLIST:
+            return _Intent("TODAY_PRIORITIES", kind="today")
+        if intent == shared_semantics.KNOWLEDGE:
+            kind = plan.kind or ""
+            if kind == "comparison":
+                return _Intent("KNOWLEDGE", direct=_CALL_CBS_COMPARISON, kind="knowledge")
+            if kind == "call":
+                return _Intent("KNOWLEDGE", direct=_CALL_TEXT, kind="knowledge")
+            if kind == "cbs":
+                return _Intent("KNOWLEDGE", direct=_CBS_TEXT, kind="knowledge")
+            return _Intent("KNOWLEDGE", kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_EVALUATION:
+            return _Intent("KNOWLEDGE", kind="knowledge")
+        if intent == shared_semantics.EXPLAIN_PRIORITY:
+            return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="priority")
+        if intent == shared_semantics.SCORE_VALUE:
+            return _Intent("RECOVERY_SCORE_EXPLANATION", cif=cif, kind="score_ask")
+        if intent == shared_semantics.SCORE_BREAKDOWN:
+            return _Intent("RECOVERY_SCORE_EXPLANATION", cif=cif, kind="score")
+        if intent == shared_semantics.CURRENT_CASE_SUMMARY:
+            return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="customer")
+        if intent == shared_semantics.CURRENT_CASE_ACTION:
+            return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="decision")
+        if intent == shared_semantics.SIMULATION:
+            return _Intent("SIMULATION", cif=cif, changes=dict(changes), kind="simulation")
+        if intent == shared_semantics.SIMULATION_FOLLOWUP:
+            return _Intent("CONTEXTUAL_FOLLOWUP", cif=cif, kind="simulation_followup")
+        if intent == shared_semantics.RETURN_TO_BASELINE:
+            return _Intent(
+                "CONTEXTUAL_FOLLOWUP",
+                direct=("Đã quay lại dữ liệu thực của hồ sơ. Các kết quả mô phỏng trước đó "
+                        "không làm thay đổi quyết định gốc."),
+                cif=cif, kind="baseline",
+            )
+        if intent == shared_semantics.CLARIFICATION:
+            return _Intent("CONTEXTUAL_FOLLOWUP", kind="clarify_nonpayment")
+        if intent == shared_semantics.CLARIFICATION_RESPONSE:
+            return _Intent("CONTEXTUAL_FOLLOWUP", kind="clarification_response")
+        if intent == shared_semantics.ACTIVE_CIF_QUERY:
+            return _Intent("CURRENT_CONTEXT", kind="context")
+        if intent == shared_semantics.UNKNOWN:
+            if plan.source == "security_guard":
+                return _Intent("FALLBACK", direct=_SECURITY_TEXT, kind="fallback")
+            return _Intent("FALLBACK", direct=_FALLBACK_TEXT, kind="fallback")
+        return _Intent("FALLBACK", direct=_FALLBACK_TEXT, kind="fallback")
 
     def _fast_local_intent(self, message: str, norm: str) -> NLUResult:
         """Fast deterministic NLU path. High-confidence only; anything that is

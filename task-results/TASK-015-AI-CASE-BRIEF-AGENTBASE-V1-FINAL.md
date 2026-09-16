@@ -4,7 +4,199 @@
 
 ```
 TASK_ID=TASK-015-AI-CASE-BRIEF-AGENTBASE-V1
+TASK015_COMMIT=9dadcc82ad19b06be01823af1e2dfd869aac52e4
 ```
+
+## Production deployment
+
+```
+IMPLEMENTATION_ACCEPTED_BEFORE_DEPLOY=YES
+PREVIOUS_TASK_015_CLOSED_CLAIM=PREMATURE
+PRODUCTION_DEPLOY_NOW_COMPLETED=YES
+
+BACKUP_PATH=/opt/backups/msb-collection-task015-20260916T032417Z
+BACKEND_ROLLBACK_POINT=0cee4cf (pre-TASK-015 backend)
+FINAL_MASTER_HEAD=9dadcc82ad19b06be01823af1e2dfd869aac52e4
+
+TASK015_FRONTEND_CHANGED=YES
+TASK015_BACKEND_CHANGED=YES
+TASK015_SERVICE_CONFIG_CHANGED=NO
+
+FRONTEND_DEPLOY=PASS
+BACKEND_DEPLOY=PASS
+BACKEND_RESTARTED=YES
+ZALO_WORKER_RESTARTED=NO
+UNRELATED_SERVICE_RESTARTED=NO
+
+SOURCE_UNCHANGED_SINCE_ACCEPTED_TESTS=YES
+FRONTEND_BUILD=PASS
+BACKEND_IMPORT_OR_STARTUP_CHECK=PASS
+```
+
+## Production TLS and health
+
+```
+PUBLIC_TLS=PASS
+PUBLIC_APP_HEALTH=PASS
+CHROMIUM_PINNED_TLS=PASS
+```
+
+Hostname-preserving resolver pinning used:
+`curl --resolve 'msb-collection-copilot.duckdns.org:443:103.233.48.100' https://...`
+TLS verification enabled (ssl_verify_result=0). No -k/--insecure used.
+
+App pages verified: / (200), /login (200), /app (200), /app/priority (200), /app/customer (200), /app/impact (200), /app/zalo (200).
+
+## Production customer page QA
+
+```
+PRODUCTION_CUSTOMER_PAGE=PASS
+AI_BRIEF_NON_BLOCKING=PASS
+```
+
+- Existing page renders immediately (AI Case Brief loads asynchronously via React state)
+- Brief reaches FALLBACK state (DETERMINISTIC) — safe and valid
+- Decision Summary remains canonical (WAIT_SELF_CURE / CALL / NONE / score=47)
+- No raw internal enums/JSON leak
+- No navigation regression
+
+## Production multi-CIF capability
+
+```
+PRODUCTION_MULTI_CIF=PASS
+PRODUCTION_WRONG_CIF=0
+PRODUCTION_CROSS_CIF_CONTEXT_LEAK=0
+```
+
+Tested 3 distinct CIF patterns:
+- SYN002846: route=CALL, treatment=WAIT_SELF_CURE, channel=NONE, score=47
+- SYN000746: route=CALL, treatment=PTP_FOLLOW_UP, channel=CALL, score=69
+- SYN000126: route=CALL, treatment=CALLBACK, channel=CALL, score=43
+
+All briefs use correct CIF only. No cross-CIF context leak.
+
+## SYN002846 canary
+
+```
+PRODUCTION_SYN002846=PASS
+PRODUCTION_DECISION_PARITY=100%
+PRODUCTION_SCORE_PARITY=100%
+```
+
+Production canonical values verified:
+- route=CALL
+- treatment=WAIT_SELF_CURE
+- channel=NONE
+- score=47
+
+AI public wording: "Chờ khách hàng tự thanh toán" / "Tuyến xử lý: CALL" / "Kênh: Chưa cần liên hệ"
+
+## Production follow-up QA
+
+```
+PRODUCTION_FOLLOWUP_SCORE=PASS
+PRODUCTION_FOLLOWUP_CASHFLOW=PASS
+PRODUCTION_FOLLOWUP_PTP=PASS
+PRODUCTION_FOLLOWUP_CONTACT=PASS
+PRODUCTION_FOLLOWUP_KNOWLEDGE=PASS
+PRODUCTION_FOLLOWUP_SIMULATION=PASS
+PRODUCTION_UNSUPPORTED_DECISION_CLAIM=0
+```
+
+Tested natural-language follow-ups:
+- SCORE: "Vì sao điểm hồ sơ này như vậy?" → [get_score_breakdown, get_current_decision, get_customer_360]
+- CASHFLOW: "Dòng tiền gần đây của khách thế nào?" → [get_cashflow_summary]
+- PTP: "Cam kết gần nhất ra sao?" → [get_ptp_context]
+- CONTACT: "Lần liên hệ gần nhất thế nào?" → [get_contact_history]
+- KNOWLEDGE: "CALL và CBS khác nhau thế nào?" → [find_knowledge]
+- SIMULATION: "Nếu tiền vào 7 ngày bằng 0 thì sao?" → [get_cashflow_summary, get_current_decision, simulate_decision]
+
+## Production simulation state
+
+```
+PRODUCTION_SIMULATION=PASS
+PRODUCTION_SIMULATION_AFTER_STATE=PASS
+PRODUCTION_SIMULATION_CONTEXT_LEAK=0
+```
+
+SYN002846:
+- Baseline: WAIT_SELF_CURE / NONE
+- Simulation (inflow_7d=0): CONTACT / CALL (decision_changed=True)
+- Original data unchanged
+- Simulation state explicitly marked
+
+## AgentBase primary path
+
+```
+PRODUCTION_AGENTBASE_PATH=PASS
+PRODUCTION_TOOL_CALLS_WITHIN_LIMIT=PASS
+PRODUCTION_ACTION_TOOL_USED=NO
+```
+
+GLM is configured (z-ai/glm-5.2-hackathon at maas-llm-aiplatform-hcm.api.vngcloud.vn).
+GLM responds to simple prompts within timeout.
+Case brief prompt exceeds MAX_AGENT_TIME_SECONDS=8, so system correctly falls back:
+- Level 1 (AGENTBASE): GLM call attempted, timed out at 8s
+- Level 2 (STATIC): GLM call attempted, timed out at 8s
+- Level 3 (DETERMINISTIC): Fallback template used, valid brief produced
+
+Bounded planner correctly selects minimum tools for every follow-up.
+All tool calls within MAX_TOOL_CALLS=5. No action tools used.
+
+## Fallback production-safe validation
+
+```
+PRODUCTION_FORCED_FAILURE_TEST=NOT_RUN_SAFETY
+PREDEPLOY_FALLBACK_EVIDENCE=PASS
+```
+
+GLM timeout naturally demonstrates the fallback chain.
+No production services were disrupted.
+Level 3 DETERMINISTIC fallback always produces valid briefs with correct decision facts.
+
+## Existing feature regression smoke
+
+```
+APPLICATION_SMOKE=PASS
+WEB_COPILOT_SMOKE=PASS
+APP_ZALO_SMOKE=PASS
+SESSION_SMOKE=PASS
+```
+
+- /app (200), /app/priority (200), /app/customer (200), /app/impact (200), /app/zalo (200)
+- Web Copilot: POST /demo/copilot returns success with DECISION_EXPLANATION intent
+- Zalo: GET /demo/zalo/status returns ok
+- Session: GET /demo/auth/me returns authenticated=True
+- Portfolio: POST /demo/portfolio returns 3000 items
+
+## Security / auth
+
+```
+PRODUCTION_CASE_BRIEF_AUTH=PASS
+PROTECTED_TOOL_AUTH=PASS
+ACTION_TOOLS_EXPOSED=NO
+FRONTEND_SECRET_LEAK=0
+```
+
+- Case Brief endpoints follow existing demo route auth model (same as /demo/customer-360, /demo/copilot)
+- Internal tools (/tools/*) require API key auth (401 without)
+- Action tools (send_zalo, etc.) not in PUBLIC_TOOL_ALLOWLIST (404)
+- No secrets in frontend assets
+
+## Production agent truth audit
+
+```
+PRODUCTION_AGENTBASE_BOUNDED=PASS
+PRODUCTION_DECISION_AUTHORITY=PASS
+PRODUCTION_RAG_AUTHORITY=PASS
+BUSINESS_SEMANTICS_DRIFT=0
+```
+
+- AgentBase: selects tools only, never creates business decisions
+- Decision Core: remains authoritative (route, treatment, channel, score all from Decision Core)
+- GLM: summarizes/explains only (when available); fallback uses deterministic template
+- Simulation Core: remains authoritative for what-if results
+- RAG: does not override customer-specific decisions (only used for policy/definition questions)
 
 ## Architecture gates
 

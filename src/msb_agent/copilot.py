@@ -310,7 +310,7 @@ def _today_worklist_response(cif: str, started: float, confidence: float, classi
     scored.sort(key=lambda row: (-int(row["recovery_opportunity_score"]), str(row["cif"])))
     top = scored[:3]
     call_no_now = 0
-    for row in scored:
+    for row in scored[:5]:
         route = row.get("final_route")
         if route == "CALL":
             nba_env = timed_caller("get_next_best_action", {"cif": row["cif"]})

@@ -13,6 +13,8 @@ from msb_agent.copilot import route_copilot
 from msb_impact.engine import build_impact_report
 from msb_zalo.bridge import ZaloBridge
 from msb_zalo.client import ZaloBotClient
+from msb_case_brief.service import CaseBriefService
+from msb_case_brief.cache import CaseBriefCache
 
 _demo_engine: DemoEventEngine | None = None
 _repository: ToolRepository | None = None
@@ -21,12 +23,15 @@ _sessions: set[str] = set()
 _sessions_lock = threading.Lock()
 _zalo_bridge: ZaloBridge | None = None
 _zalo_client: ZaloBotClient | None = None
+_case_brief_service: CaseBriefService | None = None
+_case_brief_cache = CaseBriefCache()
 _logger = logging.getLogger(__name__)
 _DEMO_CIF = re.compile(r"(?:SYN\d{6}|GOLDEN_G\d{2})\Z")
 _BROWSER_POST_ROUTES = frozenset({
     "/demo/customer-360", "/demo/next-best-action", "/demo/simulate",
     "/demo/events", "/demo/copilot", "/demo/portfolio", "/demo/impact",
     "/demo/zalo/recipient", "/demo/zalo/reset-recipient", "/demo/zalo/send-morning-brief",
+    "/demo/case-brief", "/demo/case-brief/question",
 })
 _DEFAULT_ZALO_TOKEN_FILE = "/root/.config/msb-collection/zalo-bot-token"
 _DEFAULT_ZALO_SECRET_FILE = "/root/.config/msb-collection/zalo-inbound-shared-secret"
@@ -82,6 +87,43 @@ def _get_zalo_client() -> ZaloBotClient:
 
 def _zalo_sender(target_id: str, text: str) -> dict:
     return _get_zalo_client().send_message(target_id, text)
+
+
+def _case_brief_tool_caller(name: str, args: dict) -> dict:
+    return invoke_tool(name, args, repository=_get_repository())
+
+
+def _case_brief_llm_complete(prompt: str, max_tokens: int, temperature: float) -> tuple[str | None, str | None]:
+    from msb_agent.llm import maas_client_from_env
+    client = maas_client_from_env(timeout_seconds=8)
+    if client is None:
+        return None, None
+    return client.complete(prompt, max_tokens=max_tokens, temperature=temperature)
+
+
+def _case_brief_knowledge_answer(question: str) -> dict:
+    try:
+        from msb_agent.copilot import _knowledge_service
+        service = _knowledge_service()
+        answer = service.answer(question)
+        return {"answer": answer.answer, "sources": answer.sources or [],
+                "knowledge_type": answer.knowledge_type, "status": answer.status}
+    except Exception:
+        return {"answer": "", "sources": [], "knowledge_type": "PROJECT_KNOWLEDGE", "status": "ERROR"}
+
+
+def _get_case_brief_service() -> CaseBriefService:
+    global _case_brief_service
+    if _case_brief_service is None:
+        with _repository_lock:
+            if _case_brief_service is None:
+                _case_brief_service = CaseBriefService(
+                    tool_caller=_case_brief_tool_caller,
+                    llm_complete=_case_brief_llm_complete,
+                    knowledge_answer=_case_brief_knowledge_answer,
+                    cache=_case_brief_cache,
+                )
+    return _case_brief_service
 
 
 def _zalo_secret() -> str:
@@ -323,6 +365,32 @@ class ToolHandler(BaseHTTPRequestHandler):
             self._handle_demo_event(body); return
         if self.path == "/demo/copilot":
             self._send(200, _invoke_copilot(body)); return
+        if self.path == "/demo/case-brief":
+            cif = _demo_cif(body)
+            if cif is None:
+                self._send(400, _invalid_demo_cif()); return
+            simulation_changes = body.get("changes") if isinstance(body.get("changes"), dict) else None
+            try:
+                result = _get_case_brief_service().generate_brief(cif, simulation_changes)
+                self._send(200, result.to_dict())
+            except Exception:
+                self._send(200, {"status": "error", "error": {"code": "CASE_BRIEF_ERROR",
+                    "message": "Case brief generation failed"}, "agent_path": "DETERMINISTIC"})
+            return
+        if self.path == "/demo/case-brief/question":
+            cif = _demo_cif(body)
+            question = body.get("question")
+            if cif is None or not isinstance(question, str) or not question.strip():
+                self._send(400, {"error": {"code": "INVALID_ARGUMENT",
+                    "message": "A synthetic demo CIF and non-empty question are required"}}); return
+            simulation_changes = body.get("changes") if isinstance(body.get("changes"), dict) else None
+            try:
+                result = _get_case_brief_service().answer_question(cif, question.strip(), simulation_changes)
+                self._send(200, result.to_dict())
+            except Exception:
+                self._send(200, {"status": "error", "error": {"code": "CASE_BRIEF_ERROR",
+                    "message": "Case brief question failed"}, "agent_path": "DETERMINISTIC"})
+            return
         if self.path == "/demo/zalo/recipient":
             self._send(200, _get_zalo_bridge().configure(body)); return
         if self.path == "/demo/zalo/reset-recipient":

@@ -87,8 +87,7 @@ export function LoginPage() {
       const response = await fetch('/demo/auth/login', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
       const body = await response.json();
       if (!response.ok) throw new Error(body?.error?.message || 'Không thể đăng nhập.');
-      const next = new URLSearchParams(window.location.search).get('next');
-      window.location.replace(next && next.startsWith('/app') ? next : '/app');
+      window.location.replace('/app');
     } catch (e: any) { setError(e.message || 'Không thể đăng nhập.'); setBusy(false); }
   };
   return <main className="login-page">

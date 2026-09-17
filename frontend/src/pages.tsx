@@ -1,11 +1,13 @@
 import React, {useEffect, useState} from 'react';
-import {Activity, ArrowRight, BarChart3, ChevronRight, LayoutDashboard, LogOut, MessageCircle, Radio, ShieldCheck, UserRound} from 'lucide-react';
+import {Activity, ArrowRight, BarChart3, ChevronDown, ChevronRight, LayoutDashboard, LogOut, MessageCircle, Radio, ShieldCheck, UserRound} from 'lucide-react';
 
 export type Page = string;
 export const primaryNav = [
   {page:'overview', label:'Tổng quan', icon:LayoutDashboard},
   {page:'priority', label:'Danh sách ưu tiên', icon:Activity},
   {page:'customer', label:'Khách hàng', icon:UserRound},
+] as const;
+export const adminNav = [
   {page:'impact', label:'Tác động dự kiến', icon:BarChart3},
   {page:'zalo', label:'Điều khiển Demo Zalo', icon:Radio},
 ] as const;
@@ -13,14 +15,21 @@ const routeLabel = (route:string) => ({CALL:'Tác nghiệp CALL', CBS:'Tác nghi
 const actionLabel = (action:string) => ({WAIT:'Chờ theo dõi',WAIT_SELF_CURE:'Chờ khách hàng tự thanh toán',CONTACT:'Liên hệ khách hàng',REMIND:'Nhắc thanh toán',PTP_FOLLOW_UP:'Theo dõi cam kết',PTP_RECOVERY:'Xử lý cam kết không thực hiện',PARTIAL_PAYMENT:'Theo dõi thanh toán một phần',CALLBACK:'Gọi lại theo lịch',VERIFY_CONTACT:'Xác minh liên hệ',ESCALATE:'Chuyển mức xử lý'}[action] || 'Chưa có đề xuất');
 const money = (n:number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 export function Sidebar({page,cif,setPage,open,setCopilot,logout}:any) {
+  const isAdminChild = adminNav.some((x:any)=>x.page===page);
+  const [adminOpen,setAdminOpen] = useState(isAdminChild);
+  useEffect(()=>{ if(isAdminChild) setAdminOpen(true); },[isAdminChild]);
   return <aside className="sidebar"><a className="brand" href="/" aria-label="Về trang giới thiệu MSB Trợ lý Thu hồi Nợ"><div className="msb">MSB</div><div><b>Trợ lý Thu hồi Nợ</b><span>Powered by GreenNode AI</span></div></a>
-    <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}</nav>
+    <nav aria-label="Điều hướng chính">{primaryNav.map(({page:target,label,icon:Icon}:any) => <button key={target} className={`navitem${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>target==='customer'?open(cif):setPage(target)}><Icon size={18}/><span>{label}</span></button>)}
+    <div className="sidebar-separator admin-separator"/>
+    <button className={`navitem admin-toggle${adminOpen?' admin-open':''}`} aria-expanded={adminOpen} onClick={()=>setAdminOpen(!adminOpen)}><BarChart3 size={18}/><span>Quản trị</span>{adminOpen?<ChevronDown size={16}/>:<ChevronRight size={16}/>}</button>
+    {adminOpen && <div className="admin-children">{adminNav.map(({page:target,label,icon:Icon}:any) => <button key={target} className={`navitem admin-child${page===target?' active':''}`} aria-current={page===target?'page':undefined} onClick={()=>setPage(target)}><Icon size={16}/><span>{label}</span></button>)}</div>}
+    </nav>
     <div className="sidebar-separator assistant-separator"/>
     <button className="assistant-cta" onClick={()=>setCopilot(true)}><MessageCircle size={19}/><span><b>Trợ lý Thu hồi Nợ</b><small>Hỏi về quyết định</small></span><ArrowRight size={15}/></button>
     {logout&&<button className="logout-button" onClick={logout}><LogOut size={16}/> Đăng xuất</button>}
     <div className="side-foot"><ShieldCheck size={15}/> Môi trường demo<br/><span>Dữ liệu mô phỏng</span></div></aside>;
 }
-export function Header({page}:{page:Page}) {return <header><div className="crumb">MSB / {page==='system-overview'?'Giới thiệu hệ thống':primaryNav.find(x=>x.page===page)?.label}</div><div className="header-right"><span className="live"><i/> Môi trường mô phỏng</span><div className="avatar">HT</div></div></header>}
+export function Header({page}:{page:Page}) {return <header><div className="crumb">MSB / {page==='system-overview'?'Giới thiệu hệ thống':primaryNav.find(x=>x.page===page)?.label || adminNav.find((x:any)=>x.page===page)?.label}</div><div className="header-right"><span className="live"><i/> Môi trường mô phỏng</span><div className="avatar">HT</div></div></header>}
 export function chartCounts(rows:any[], kind:'action'|'route') {
   const counts:Record<string,number> = {};
   for(const row of rows) {

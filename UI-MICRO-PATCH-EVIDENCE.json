@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "tested_head": "06b625615faffc0c8d4a281b0fe72c217533e898",
+    "timestamp": "2026-09-17T10:49:06.456346+00:00"
+  },
+  "login": {
+    "css_loaded": true,
+    "redirect_default": "/app",
+    "next_zalo_redirect": "/app"
+  },
+  "admin": {
+    "default_collapsed": true,
+    "expand": true,
+    "collapse": true,
+    "child_active": true
+  },
+  "business": {
+    "total_portfolio": 3000,
+    "call_no_call": 32,
+    "score": 47
+  }
+}

@@ -275,7 +275,7 @@ def resolve(message: str, state: ConversationState | None = None) -> ResolvedInt
     if cif:
         if _has_any(norm, _EXPLAIN_PRIORITY_MARKERS) or ("xem" in norm and _has_any(norm, ("vi sao", "tai sao"))) or (("vi sao" in norm or "tai sao" in norm) and "xem" in norm):
             return ResolvedIntent(EXPLAIN_PRIORITY, cif=cif, confidence=1.0)
-        if _has_any(norm, _SCORE_BREAKDOWN_MARKERS) or _has_any(norm, ("cach tinh diem", "tinh diem")) or ("diem" in norm and _has_any(norm, ("giai thich", "tinh", "cham", "tieu chi", "dua tren"))):
+        if _has_any(norm, _SCORE_BREAKDOWN_MARKERS) or _has_any(norm, ("cach tinh diem", "tinh diem")) or ("diem" in norm and _has_any(norm, ("giai thich", "tinh", "cham", "tieu chi", "dua tren", "chi tiet"))):
             return ResolvedIntent(SCORE_BREAKDOWN, cif=cif, confidence=0.95)
         if _has_any(norm, _SCORE_VALUE_MARKERS) or "diem bao nhieu" in norm:
             return ResolvedIntent(SCORE_VALUE, cif=cif, confidence=0.95)
@@ -285,7 +285,7 @@ def resolve(message: str, state: ConversationState | None = None) -> ResolvedInt
             return ResolvedIntent(CURRENT_CASE_ACTION, cif=cif, confidence=0.9)
 
     # Score without explicit CIF -> use active/last CIF as context (not intent)
-    if _has_any(norm, _SCORE_BREAKDOWN_MARKERS) or _has_any(norm, ("cach tinh diem", "tinh diem")) or ("diem" in norm and _has_any(norm, ("giai thich", "tinh", "cham", "tieu chi", "dua tren"))):
+    if _has_any(norm, _SCORE_BREAKDOWN_MARKERS) or _has_any(norm, ("cach tinh diem", "tinh diem")) or ("diem" in norm and _has_any(norm, ("giai thich", "tinh", "cham", "tieu chi", "dua tren", "chi tiet"))):
         return ResolvedIntent(SCORE_BREAKDOWN, cif=effective_cif, confidence=0.9, needs_clarification=not effective_cif)
     if _has_any(norm, _SCORE_VALUE_MARKERS) or "diem bao nhieu" in norm:
         return ResolvedIntent(SCORE_VALUE, cif=effective_cif, confidence=0.9, needs_clarification=not effective_cif)

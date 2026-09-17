@@ -113,6 +113,12 @@ class CaseContextBuilder:
             "technical_call_status_counts": contact_data.get("technical_call_status_counts", {}),
         }
 
+        from msb_agent.semantics import map_score_component
+        mapped_breakdown = [
+            {**c, "name": map_score_component(c.get("name"))}
+            for c in (score.get("component_breakdown") or [])
+            if isinstance(c, dict)
+        ]
         score_summary = {
             "recovery_opportunity_score": score.get("recovery_opportunity_score"),
             "business_urgency_score": score.get("business_urgency_score"),
@@ -121,7 +127,7 @@ class CaseContextBuilder:
             "contactability_score": score.get("contactability_score"),
             "timing_opportunity_score": score.get("timing_opportunity_score"),
             "strategic_adjustment_score": score.get("strategic_adjustment_score"),
-            "component_breakdown": score.get("component_breakdown", []),
+            "component_breakdown": mapped_breakdown,
         }
 
         sim_summary: dict[str, Any] | None = None

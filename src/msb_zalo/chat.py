@@ -17,6 +17,8 @@ from typing import Any, Callable
 
 from msb_agent.copilot import route_copilot
 from msb_agent.llm import maas_client_from_env
+from msb_agent.planner import plan_conversation, agent_first_enabled
+from msb_agent import semantics as shared_semantics
 from msb_tools.registry import invoke_tool
 from msb_tools.repository import ToolRepository
 
@@ -42,7 +44,8 @@ NLU_INTENTS = (
     "CUSTOMER_SUMMARY", "CUSTOMER_DECISION", "CUSTOMER_SHOULD_CALL",
     "RECOVERY_SCORE", "RECOVERY_SCORE_EXPLANATION",
     "SIMULATION", "SIMULATION_FOLLOWUP", "KNOWLEDGE", "CURRENT_CONTEXT",
-    "FOLLOWUP_WHY", "FOLLOWUP_WHAT_NEXT", "UNKNOWN",
+    "FOLLOWUP_WHY", "FOLLOWUP_WHAT_NEXT", "EXPLAIN_PRIORITY",
+    "CLARIFICATION_RESPONSE", "UNKNOWN",
 )
 
 _NLU_TO_LEGACY: dict[str, str] = {
@@ -74,12 +77,12 @@ _NLU_TOOL_MAP: dict[str, str] = {
 _NLU_LOCAL_CONFIDENCE = 0.85
 
 _NLU_CLARIFICATION_TEXT = (
-    "Tao chưa chắc mày đang hỏi về khách nào. "
-    "Gửi CIF hoặc nói rõ muốn xem quyết định, điểm hay mô phỏng nhé."
+    "Tôi chưa chắc Anh/Chị đang hỏi về hồ sơ nào. "
+    "Vui lòng gửi CIF hoặc nói rõ muốn xem quyết định, điểm hay mô phỏng."
 )
 
 _IDENTITY_TEXT = (
-    "Tao là trợ lý thu hồi nợ MSB bản demo. Tao giúp xem quyết định, "
+    "Tôi là Trợ lý Thu hồi Nợ MSB bản demo. Tôi giúp xem quyết định, "
     "tóm tắt khách hàng, mô phỏng dữ liệu và giải thích kiến thức thu hồi nợ. "
     "Dữ liệu đều là mô phỏng."
 )
@@ -118,7 +121,7 @@ _CURRENT_CONTEXT_MARKERS = (
 )
 
 _TODAY_PRIORITIES_MARKERS = (
-    "lam gi", "can lam", "phai lam", "xem khach", "uu tien", "viec gi", "can xu ly",
+    "lam gi", "can lam", "phai lam", "can thao tac", "xem khach", "uu tien", "viec gi", "can xu ly",
     "noi bat", "diem dang chu y",
 )
 
@@ -150,14 +153,7 @@ _TREATMENT_VN = {
     "WAIT_SELF_CURE": "Chờ khách hàng tự thanh toán",
 }
 
-_SCORE_COMPONENT_VN = {
-    "BUSINESS_URGENCY": "Mức khẩn cấp nghiệp vụ",
-    "ABILITY_TO_PAY": "Khả năng thanh toán",
-    "WILLINGNESS_TO_PAY": "Sẵn sàng thanh toán",
-    "CONTACTABILITY": "Khả năng tiếp cận",
-    "TIMING_OPPORTUNITY": "Thời điểm thuận lợi",
-    "STRATEGIC_ADJUSTMENT": "Điều chỉnh chiến lược",
-}
+_SCORE_COMPONENT_VN = shared_semantics.SCORE_COMPONENT_VN
 
 _RAW_WORD_VN = {
     "None": "chưa có", "null": "chưa có", "N/A": "chưa có", "NaN": "chưa có",
@@ -192,28 +188,11 @@ _WHY_BARE_MARKERS = ("vi sao", "tai sao", "sao vay", "sao the", "vi gi", "ly do 
 
 _PRONOUNS = ("ban", "may", "em", "anh", "chi", "cau", "tao", "minh", "chi minh")
 
-_CALL_TEXT = (
-    "CALL là tuyến xử lý qua gọi điện, hướng tới khách hàng cần tương tác trực tiếp "
-    "để thu hồi. Routing là tuyến xử lý, không đồng nghĩa action phải thực hiện ngay. "
-    "Thuộc tuyến CALL không có nghĩa hôm nay cán bộ nhất thiết phải gọi."
-)
+_CALL_TEXT = shared_semantics.CALL_TEXT
 
-_CBS_TEXT = (
-    "CBS là tuyến nhắc thanh toán và theo dõi cam kết. Routing là tuyến xử lý, "
-    "không đồng nghĩa action phải thực hiện ngay."
-)
+_CBS_TEXT = shared_semantics.CBS_TEXT
 
-_CALL_CBS_COMPARISON = (
-    "CALL và CBS là hai tuyến xử lý (route) trong tác nghiệp thu hồi.\n"
-    "• CALL — tuyến xử lý qua gọi điện, hướng tới khách hàng cần tương tác trực tiếp để thu hồi.\n"
-    "• CBS — tuyến nhắc thanh toán và theo dõi cam kết.\n"
-    "Khác nhau ở hướng tiếp cận: CALL dùng gọi điện để tương tác trực tiếp; CBS nhắc thanh toán "
-    "và theo dõi cam kết.\n"
-    "Routing là tuyến xử lý, không đồng nghĩa action phải thực hiện ngay.\n"
-    "Thuộc tuyến CALL không có nghĩa hôm nay cán bộ nhất thiết phải gọi.\n"
-    "Routing trả lời khách thuộc tuyến nào; treatment trả lời hành động cụ thể hôm nay là gì.\n"
-    "Nguồn: Phân tuyến CALL / CBS (kiến thức dự án)."
-)
+_CALL_CBS_COMPARISON = shared_semantics.CALL_CBS_COMPARISON
 
 _META_IDENTITY = frozenset({
     "ban la ai", "may la ai", "em la ai", "anh la ai", "chi la ai", "cau la ai",
@@ -300,6 +279,9 @@ def _normalize(value: str) -> str:
     text = text.replace("vi sai", "vi sao")
     text = re.sub(r"\bcac tinh\b", "cach tinh", text)
     text = re.sub(r"\btao ngay\b", "tao nay", text)
+    text = re.sub(r"\bhnay\b", "hom nay", text)
+    text = re.sub(r"^nay\b", "hom nay", text)
+    text = re.sub(r"\b(?:lam|lm) j\b", "lam gi", text)
     text = text.replace("/", " ")
     text = re.sub(r"[?!.,;:]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
@@ -333,14 +315,28 @@ def _is_greeting(text: str) -> bool:
 def _call_cbs_kind(text: str) -> str | None:
     has_call = "call" in text
     has_cbs = "cbs" in text
-    concept = _has_any(text, ("la gi", "la gi vay", "la gi the", "nghia la", "de lam gi", "khac nhau", "khac nhau giua"))
-    if has_call and has_cbs and concept:
+    concept = _has_any(text, ("la gi", "la gi vay", "la gi the", "nghia la", "de lam gi", "khac nhau", "khac nhau giua", "thi sao", "sao"))
+    if has_call and has_cbs and (concept or _has_any(text, ("khac nhau", "so sanh"))):
         return "comparison"
     if has_call and concept:
         return "call"
-    if has_cbs and concept:
+    if has_cbs and (concept or _has_any(text, ("khac nhau", "so sanh"))):
         return "cbs"
     return None
+
+
+def _extract_cif(message: str) -> str | None:
+    """Extract a CIF without making broad fuzzy corrections.
+
+    ``sny`` is the one-character transcription error observed in the production
+    corpus; its format is otherwise unambiguous, so correcting that prefix does
+    not select between customers. Other malformed identifiers stay unresolved.
+    """
+    matched = _CIF_RE.search(message)
+    if matched:
+        return matched.group(0).upper()
+    typo = re.search(r"\bSNY(\d{6})\b", message, re.IGNORECASE)
+    return f"SYN{typo.group(1)}" if typo else None
 
 
 def _extract_changes(text: str) -> dict[str, Any]:
@@ -450,24 +446,32 @@ _LOCAL_INTENTS = frozenset({
 def build_morning_brief(repository: ToolRepository) -> dict[str, Any]:
     """Deterministic morning priority shared by the chat and morning-brief flows."""
     rows = repository.portfolio()
-    decisions = [invoke_tool("get_next_best_action", {"cif": row["cif"]}, repository=repository)
-                 for row in rows]
-    by_cif = {item["data"]["cif"]: item["data"] for item in decisions if item.get("ok") and item.get("data")}
-    available = [row for row in rows if row["cif"] in by_cif]
-    call_no_now = sum(1 for row in available if by_cif[row["cif"]]["final_route"] == "CALL"
-                      and by_cif[row["cif"]]["channel"] == "NONE")
-    top = sorted(available, key=lambda row: (-int(row.get("recovery_opportunity_score", 0)), row["cif"]))[:3]
+    scored = sorted(rows, key=lambda row: (-int(row.get("recovery_opportunity_score", 0)), row["cif"]))
+    # Top-5 decisions for display
+    top_decisions = [invoke_tool("get_next_best_action", {"cif": row["cif"]}, repository=repository)
+                     for row in scored[:5]]
+    by_cif = {item["data"]["cif"]: item["data"] for item in top_decisions if item.get("ok") and item.get("data")}
+    # Count CALL+NONE across the FULL portfolio, not just top-5
+    call_no_now = 0
+    for row in rows:
+        if row.get("final_route") != "CALL":
+            continue
+        nba = invoke_tool("get_next_best_action", {"cif": row["cif"]}, repository=repository)
+        if nba.get("ok") and nba.get("data", {}).get("channel") == "NONE":
+            call_no_now += 1
+    top = scored[:3]
     lines = ["☀️ Trợ lý Thu hồi Nợ — Ưu tiên hôm nay", "", "Danh mục demo:",
-             f"• {len(available)} hồ sơ có quyết định từ hệ thống",
+             f"• {len(rows)} hồ sơ có quyết định từ hệ thống",
              f"• {call_no_now} hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay", "", "Top cơ hội cần xem:"]
     for row in top:
-        decision = by_cif[row["cif"]]
-        lines.append(f"• {row['cif']} · Điểm {row.get('recovery_opportunity_score', 0)} · {_TREATMENT_VN.get(decision['treatment'], 'Theo quyết định hệ thống')}")
+        decision = by_cif.get(row["cif"])
+        treatment_label = _TREATMENT_VN.get(decision["treatment"], "Theo quyết định hệ thống") if decision else "Theo quyết định hệ thống"
+        lines.append(f"• {row['cif']} · Điểm {row.get('recovery_opportunity_score', 0)} · {treatment_label}")
     lines += ["", "Bạn có thể trả lời tin nhắn này để hỏi Trợ lý Thu hồi Nợ."]
     text = "\n".join(lines)
     if len(text) > MAX_ZALO_TEXT:
         raise ValueError("Morning brief exceeds the supported Zalo text limit")
-    return {"text": text, "portfolio_count": len(available), "call_route_no_call_now": call_no_now,
+    return {"text": text, "portfolio_count": len(rows), "call_route_no_call_now": call_no_now,
             "top_cifs": [row["cif"] for row in top], "synthetic_data": True}
 
 
@@ -553,6 +557,12 @@ class _Memory:
     previous_cif: str = ""
     opener_sent: bool = False
     previous_user_message: str = ""
+    last_topic: str = ""
+    pending_clarification: str = ""
+    last_worklist: list[str] | None = None
+    last_tool_context: dict[str, Any] | None = None
+    last_response_kind: str = ""
+    last_message_id: str = ""
 
     def snapshot(self) -> dict[str, Any]:
         return {
@@ -569,6 +579,12 @@ class _Memory:
             "previous_cif": self.previous_cif,
             "opener_sent": self.opener_sent,
             "previous_user_message": self.previous_user_message,
+            "last_topic": self.last_topic,
+            "pending_clarification": self.pending_clarification,
+            "last_worklist": list(self.last_worklist or []),
+            "last_tool_context": dict(self.last_tool_context or {}),
+            "last_response_kind": self.last_response_kind,
+            "last_message_id": self.last_message_id,
         }
 
 
@@ -737,6 +753,19 @@ class ZaloConversation:
                 answer = self._compare_customers_answer(cif or self._memory.last_cif,
                                                         self._memory.previous_cif)
                 question_intent = "CUSTOMER_COMPARE"
+            elif intent.kind == "decision":
+                target = cif or self._memory.last_cif
+                if not target:
+                    answer = _NLU_CLARIFICATION_TEXT
+                    question_intent = "AMBIGUOUS_FOLLOWUP"
+                else:
+                    decision = self._decision_enrich(target)
+                    if decision:
+                        answer = _append_line(f"Quyết định hiện tại cho {target}:", _action_block(decision))
+                        question_intent = "DECISION_EXPLANATION"
+                    else:
+                        answer = f"Không tìm thấy quyết định cho hồ sơ {target}."
+                        question_intent = "AMBIGUOUS_FOLLOWUP"
             elif intent.kind == "what_next":
                 if not cif:
                     answer = _NLU_CLARIFICATION_TEXT
@@ -745,6 +774,46 @@ class ZaloConversation:
                     answer = self._what_next_answer(cif)
                     question_intent = "FOLLOWUP_WHAT_NEXT"
                     self._memory.last_decision_context = self._decision_enrich(cif)
+            elif intent.kind == "priority":
+                if not cif:
+                    answer = "Anh/Chị vui lòng cho tôi mã CIF để giải thích ưu tiên."
+                    question_intent = "AMBIGUOUS_FOLLOWUP"
+                else:
+                    decision = self._decision_enrich(cif)
+                    if decision:
+                        treatment = _TREATMENT_VN.get(decision.get("treatment"), "theo quyết định hệ thống")
+                        answer = (f"Hồ sơ {cif} nằm trong danh sách cần xem hôm nay theo dữ liệu mô phỏng. "
+                                  f"Điểm cơ hội thu hồi hiện tại là {decision.get('score')}/100; "
+                                  f"hành động hệ thống đề xuất là {treatment.lower()}. "
+                                  "Thứ tự ưu tiên chi tiết chỉ được khẳng định khi nguồn worklist cung cấp.")
+                        question_intent = "EXPLAIN_PRIORITY"
+                    else:
+                        answer = f"Không tìm thấy hồ sơ {cif} trong dữ liệu mô phỏng."
+                        question_intent = "AMBIGUOUS_FOLLOWUP"
+            elif intent.kind == "clarify_nonpayment":
+                answer = ("Anh/Chị muốn: 1. mô phỏng khách không thực hiện cam kết hiện tại, "
+                          "hay 2. hỏi quy trình xử lý chung?")
+                question_intent = "AMBIGUOUS_FOLLOWUP"
+                self._memory.pending_clarification = "NONPAYMENT"
+            elif intent.kind == "clarification_response":
+                if self._memory.pending_clarification == "NONPAYMENT":
+                    if norm in ("mo phong", "quyet dinh"):
+                        cif = self._memory.last_cif
+                        if cif:
+                            intent = _Intent("SIMULATION", cif=cif, changes={"ptp_state": "BROKEN"}, kind="simulation")
+                            self._memory.pending_clarification = ""
+                            answer = self._replay_new_simulation(cif, intent.changes)
+                            question_intent = "SIMULATION"
+                        else:
+                            answer = _SIM_NO_CONTEXT_TEXT
+                            question_intent = "SIMULATION"
+                    else:
+                        self._memory.pending_clarification = ""
+                        answer = ("Với quy trình xử lý chung, Trợ lý chỉ có thể giải thích theo tài liệu "
+                                  "nghiệp vụ; Anh/Chị có thể gửi CIF để xem quyết định hiện tại.")
+                        question_intent = "KNOWLEDGE"
+                else:
+                    answer = _FALLBACK_TEXT
             elif intent.label == "KNOWLEDGE":
                 response = _ask_knowledge(message, self._memory.last_cif or DEFAULT_DEMO_CIF, self._caller())
                 answer = render_zalo_text(response)
@@ -765,6 +834,7 @@ class ZaloConversation:
                 lines.append("Điểm cơ hội và hành động đề xuất của từng hồ sơ đã có trong bảng tin sáng.")
                 answer = "\n".join(lines)
                 question_intent = "TODAY_PRIORITIES"
+                self._memory.last_worklist = list(brief["top_cifs"])
             elif intent.label == "CURRENT_CONTEXT":
                 answer = self._current_context_answer()
                 question_intent = "CURRENT_CONTEXT"
@@ -848,18 +918,23 @@ class ZaloConversation:
                 "cif": cif or "",
                 "changes": dict(intent.changes or _extract_changes(norm)),
             }
+            self._memory.pending_clarification = ""
         if question_intent == "SIMULATION" and intent.label == "CUSTOMER_EXPLICIT":
             self._memory.last_simulation_context = {
                 "cif": cif or "",
                 "changes": dict(intent.changes or _extract_changes(norm)),
             }
-        if question_intent == "SIMULATION":
+        if question_intent == "SIMULATION" and self._memory.last_simulation_context:
             replay = self._replay_simulation(
                 self._memory.last_simulation_context.get("cif") or cif or "",
                 self._memory.last_simulation_context.get("changes") or {},
             )
             if replay and replay != self._why_clarification():
                 answer = replay
+        if intent.label == "KNOWLEDGE":
+            self._memory.last_topic = "ROUTING_CALL_CBS" if (
+                intent.direct in (_CALL_TEXT, _CBS_TEXT, _CALL_CBS_COMPARISON)
+            ) else "KNOWLEDGE"
         answer_kind = _KIND_FOR_INTENT.get(question_intent, intent.kind or "fallback")
         if answer_kind in ("identity", "help", "knowledge"):
             question_intent = intent.label
@@ -1030,6 +1105,15 @@ class ZaloConversation:
             lines.append(f"Hành động đề xuất thay đổi: {before} → {after}")
         return _sanitize_answer("\n".join(lines))
 
+    def _replay_new_simulation(self, cif: str, changes: dict[str, Any]) -> str:
+        """Run an explicitly selected clarification simulation once, then replay.
+
+        The selected change is limited to Simulation Core's existing supported
+        fields and remains bound to this CIF.
+        """
+        self._memory.last_simulation_context = {"cif": cif, "changes": dict(changes)}
+        return self._replay_simulation(cif, changes)
+
     def _score_explanation(self, cif: str) -> str:
         try:
             envelope = invoke_tool("get_recovery_opportunity", {"cif": cif}, repository=self.repository)
@@ -1093,11 +1177,102 @@ class ZaloConversation:
         if not norm:
             self._last_nlu = NLUResult(intent="UNKNOWN", confidence=1.0, needs_clarification=True)
             return _Intent("FALLBACK", direct=_FALLBACK_TEXT, kind="fallback")
+        if agent_first_enabled():
+            planner_intent = self._classify_with_planner(message, norm)
+            if planner_intent is not None:
+                return planner_intent
         nlu = self._fast_local_intent(message, norm)
         if nlu.confidence < _NLU_LOCAL_CONFIDENCE:
             nlu = self._nlu_interpret(message, norm, nlu)
         self._last_nlu = nlu
         return self._intent_from_nlu(message, nlu)
+
+    def _classify_with_planner(self, message: str, norm: str) -> _Intent | None:
+        """Agent-first classification using the shared semantic planner.
+
+        Returns None when the planner fell back to the deterministic resolver,
+        signaling the caller to use the existing Zalo NLU path (which includes
+        Zalo-specific followup and context logic that the deterministic fallback
+        alone does not cover).
+        """
+        context = {
+            "active_cif": self._memory.active_cif or self._memory.last_cif,
+            "last_cif": self._memory.last_cif,
+            "previous_cif": self._memory.previous_cif,
+            "last_intent": self._memory.last_intent,
+            "last_topic": self._memory.last_topic,
+            "pending_clarification": self._memory.pending_clarification,
+            "last_simulation_context": self._memory.last_simulation_context,
+        }
+        if self._memory.last_worklist:
+            context["last_worklist"] = self._memory.last_worklist
+        plan = plan_conversation(message, context, channel="zalo")
+        if plan.source == "deterministic_fallback":
+            return None
+        self._last_nlu = NLUResult(
+            intent=plan.intent, cif=plan.cif, confidence=plan.confidence,
+            needs_clarification=plan.needs_clarification,
+        )
+        return self._intent_from_plan(message, plan)
+
+    def _intent_from_plan(self, message: str, plan) -> _Intent:
+        """Map a StructuredPlan to the Zalo _Intent taxonomy."""
+        cif = plan.cif
+        changes = plan.changes or _extract_changes(_normalize(message))
+        intent = plan.intent
+        if intent in (shared_semantics.GREETING, shared_semantics.HELP):
+            return _Intent("HELP", direct=f"Chào bạn. {_HELP_TEXT}", kind="help")
+        if intent == shared_semantics.TODAY_WORKLIST:
+            return _Intent("TODAY_PRIORITIES", kind="today")
+        if intent == shared_semantics.KNOWLEDGE:
+            kind = plan.kind or ""
+            if kind == "comparison":
+                return _Intent("KNOWLEDGE", direct=_CALL_CBS_COMPARISON, kind="knowledge")
+            if kind == "call":
+                return _Intent("KNOWLEDGE", direct=_CALL_TEXT, kind="knowledge")
+            if kind == "cbs":
+                return _Intent("KNOWLEDGE", direct=_CBS_TEXT, kind="knowledge")
+            return _Intent("KNOWLEDGE", kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_GOVERNANCE:
+            return _Intent("KNOWLEDGE", direct=shared_semantics.AI_GOVERNANCE_TEXT, kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_SCORE_SEMANTICS:
+            return _Intent("KNOWLEDGE", direct=shared_semantics.SCORE_NOT_PROBABILITY_TEXT, kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_EVALUATION:
+            return _Intent("KNOWLEDGE", kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_EVALUATION:
+            return _Intent("KNOWLEDGE", kind="knowledge")
+        if intent == shared_semantics.EXPLAIN_PRIORITY:
+            return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="priority")
+        if intent == shared_semantics.SCORE_VALUE:
+            return _Intent("RECOVERY_SCORE_EXPLANATION", cif=cif, kind="score_ask")
+        if intent == shared_semantics.SCORE_BREAKDOWN:
+            return _Intent("RECOVERY_SCORE_EXPLANATION", cif=cif, kind="score")
+        if intent == shared_semantics.CURRENT_CASE_SUMMARY:
+            return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="customer")
+        if intent == shared_semantics.CURRENT_CASE_ACTION:
+            return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="decision")
+        if intent == shared_semantics.SIMULATION:
+            return _Intent("SIMULATION", cif=cif, changes=dict(changes), kind="simulation")
+        if intent == shared_semantics.SIMULATION_FOLLOWUP:
+            return _Intent("CONTEXTUAL_FOLLOWUP", cif=cif, kind="simulation_followup")
+        if intent == shared_semantics.RETURN_TO_BASELINE:
+            return _Intent(
+                "CONTEXTUAL_FOLLOWUP",
+                direct=("Đã quay lại dữ liệu thực của hồ sơ. Các kết quả mô phỏng trước đó "
+                        "không làm thay đổi quyết định gốc."),
+                cif=cif, kind="baseline",
+            )
+        if intent == shared_semantics.CLARIFICATION:
+            return _Intent("CONTEXTUAL_FOLLOWUP", kind="clarify_nonpayment")
+        if intent == shared_semantics.CLARIFICATION_RESPONSE:
+            return _Intent("CONTEXTUAL_FOLLOWUP", kind="clarification_response")
+        if intent == shared_semantics.ACTIVE_CIF_QUERY:
+            return _Intent("CURRENT_CONTEXT", kind="context")
+        if intent == shared_semantics.UNKNOWN:
+            if plan.source == "security_guard":
+                return _Intent("FALLBACK", direct=_SECURITY_TEXT, kind="fallback")
+            return _Intent("FALLBACK", direct=_FALLBACK_TEXT, kind="fallback")
+        return _Intent("FALLBACK", direct=_FALLBACK_TEXT, kind="fallback")
 
     def _fast_local_intent(self, message: str, norm: str) -> NLUResult:
         """Fast deterministic NLU path. High-confidence only; anything that is
@@ -1112,6 +1287,12 @@ class ZaloConversation:
             return NLUResult(intent="GREETING", confidence=1.0)
         if _match_phrases(norm, _HELP) or _match_phrases(_strip_pronoun(norm), _HELP):
             return NLUResult(intent="HELP", confidence=1.0)
+        # A pending question owns short replies. This is intentionally before
+        # generic case matching so "quyết định" cannot fall through to RAG.
+        if self._memory.pending_clarification == "NONPAYMENT" and norm in (
+            "mo phong", "quyet dinh", "quy trinh",
+        ):
+            return NLUResult(intent="CLARIFICATION_RESPONSE", confidence=1.0)
         cbs_kind = _call_cbs_kind(norm)
         if cbs_kind == "comparison":
             return NLUResult(intent="KNOWLEDGE", entities={"kind": "comparison"}, confidence=1.0)
@@ -1119,9 +1300,39 @@ class ZaloConversation:
             return NLUResult(intent="KNOWLEDGE", entities={"kind": "call"}, confidence=1.0)
         if cbs_kind == "cbs":
             return NLUResult(intent="KNOWLEDGE", entities={"kind": "cbs"}, confidence=1.0)
+        if self._memory.last_topic == "ROUTING_CALL_CBS":
+            if norm in ("cbs thi sao", "cbs sao", "con cbs", "cbs"):
+                return NLUResult(intent="KNOWLEDGE", entities={"kind": "cbs"}, confidence=1.0)
+            if norm in ("khac nhau o dau", "khac nhau gi", "so sanh di"):
+                return NLUResult(intent="KNOWLEDGE", entities={"kind": "comparison"}, confidence=1.0)
 
-        matched = _CIF_RE.search(message)
-        cif = matched.group(0).upper() if matched else None
+        # AI governance question — must be before decision markers
+        if _has_any(norm, ("ai quyet dinh", "ai co tu quyet dinh", "tu quyet dinh", "ai co the quyet dinh", "may quyet dinh", "ai ra quyet dinh")):
+            return NLUResult(intent="KNOWLEDGE", entities={"kind": "governance"}, confidence=1.0)
+
+        # Score-is-not-probability question
+        if "diem" in norm and _has_any(norm, ("xac suat", "khac nang", "kha nang khach", "kha nang tra no")):
+            return NLUResult(intent="KNOWLEDGE", entities={"kind": "score_semantics"}, confidence=1.0)
+
+        cif = _extract_cif(message)
+
+        # Decision explanation — "chua can goi" / "chua goi" / "chua lien he"
+        # must be detected even for longer phrases (GAP-08 parity fix)
+        effective_cif = cif or self._memory.last_cif
+        if _has_any(norm, ("chua can goi", "chua goi", "chua can lien he", "chua lien he", "sao chua goi", "sao chua lien he")):
+            return NLUResult(intent="CUSTOMER_DECISION", cif=effective_cif, use_context=True, confidence=0.95)
+
+        if "khach khong tra no" in norm or "khach hang khong tra no" in norm:
+            return NLUResult(intent="CLARIFICATION_RESPONSE", confidence=1.0)
+        if (cif and (("can xem" in norm and _has_any(norm, ("vi sao", "tai sao")))
+                     or _has_any(norm, ("vi sao lai xem", "phai uu tien", "nam top")))):
+            return NLUResult(intent="EXPLAIN_PRIORITY", cif=cif, confidence=1.0)
+        if self._memory.last_cif and _has_any(norm, ("tai sao khach nay nam top", "vi sao phai uu tien ho so nay")):
+            return NLUResult(intent="EXPLAIN_PRIORITY", cif=self._memory.last_cif, confidence=0.95)
+
+        if norm in ("quyet dinh", "quyet dinh cua khach", "xem quyet dinh") and (cif or self._memory.last_cif):
+            return NLUResult(intent="CUSTOMER_DECISION", cif=cif or self._memory.last_cif,
+                             use_context=True, confidence=0.9)
 
         if _is_bare_why(norm) or _has_any(norm, ("vi sao lai", "tai sao lai")):
             return NLUResult(
@@ -1135,7 +1346,8 @@ class ZaloConversation:
             )
         if _has_any(norm, _TODAY_CALL_MARKERS):
             return NLUResult(intent="TODAY_CALL_LIST", use_context=False, confidence=0.9)
-        if "hom nay" in norm and _has_any(norm, _TODAY_PRIORITIES_MARKERS):
+        if (("hom nay" in norm and _has_any(norm, _TODAY_PRIORITIES_MARKERS))
+                or norm in ("toi can lam gi", "viec hom nay")):
             return NLUResult(intent="TODAY_PRIORITIES", confidence=0.95)
         if _has_any(norm, _COMPARE_CUSTOMERS_MARKERS):
             return NLUResult(
@@ -1143,7 +1355,7 @@ class ZaloConversation:
                 entities={"compare": True}, use_context=True, confidence=0.88,
                 needs_clarification=not (cif or self._memory.last_cif),
             )
-        if _has_any(norm, _TINH_DIEM_MARKERS):
+        if _has_any(norm, _TINH_DIEM_MARKERS) or ("diem" in norm and "bao nhieu" in norm):
             effective_cif = cif or self._memory.last_cif
             return NLUResult(
                 intent="RECOVERY_SCORE_EXPLANATION" if effective_cif else "RECOVERY_SCORE",
@@ -1152,6 +1364,7 @@ class ZaloConversation:
             )
         if "diem" in norm and (
             "co hoi thu hoi" in norm or "diem cua" in norm
+            or "diem duoc tinh" in norm or "diem tinh dua tren" in norm
             or _has_any(norm, _SCORE_EXPLAIN_MARKERS)
             or _has_any(norm, _SCORE_AMBIGUOUS_MARKERS)
         ):
@@ -1160,6 +1373,9 @@ class ZaloConversation:
                 intent="RECOVERY_SCORE_EXPLANATION", cif=effective_cif,
                 use_context=True, confidence=0.9, needs_clarification=not effective_cif,
             )
+        if "lam sao de thay" in norm and "thay doi" in norm:
+            return NLUResult(intent="SIMULATION_FOLLOWUP", cif=self._memory.last_cif,
+                             confidence=0.95)
         if _has_any(norm, _BARE_SIMULATION_MARKERS) or _has_any(norm, _SIMULATION_MARKERS):
             return NLUResult(
                 intent="SIMULATION", cif=cif or self._memory.last_cif,
@@ -1172,6 +1388,9 @@ class ZaloConversation:
                 use_context=True, confidence=0.88,
                 needs_clarification=not (cif or self._memory.last_cif),
             )
+        if norm in ("quay lai du lieu that", "quay lai du lieu goc", "tro ve du lieu that"):
+            return NLUResult(intent="SIMULATION_FOLLOWUP", cif=self._memory.last_cif,
+                             entities={"baseline": True}, confidence=1.0)
         if _has_any(norm, _CURRENT_CONTEXT_MARKERS):
             return NLUResult(intent="CURRENT_CONTEXT", confidence=0.95)
         if cif:
@@ -1248,7 +1467,17 @@ class ZaloConversation:
                 return _Intent("KNOWLEDGE", direct=_CALL_TEXT, kind="knowledge")
             if kind == "cbs":
                 return _Intent("KNOWLEDGE", direct=_CBS_TEXT, kind="knowledge")
+            if kind == "governance":
+                return _Intent("KNOWLEDGE", direct=shared_semantics.AI_GOVERNANCE_TEXT, kind="knowledge")
+            if kind == "score_semantics":
+                return _Intent("KNOWLEDGE", direct=shared_semantics.SCORE_NOT_PROBABILITY_TEXT, kind="knowledge")
             return _Intent("KNOWLEDGE", kind="knowledge")
+        if intent == "EXPLAIN_PRIORITY":
+            return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="priority")
+        if intent == "CLARIFICATION_RESPONSE":
+            if "khach khong tra no" in _normalize(message):
+                return _Intent("CONTEXTUAL_FOLLOWUP", kind="clarify_nonpayment")
+            return _Intent("CONTEXTUAL_FOLLOWUP", kind="clarification_response")
         if intent == "TODAY_PRIORITIES":
             return _Intent("TODAY_PRIORITIES", kind="today")
         if intent == "TODAY_CALL_LIST":
@@ -1258,6 +1487,10 @@ class ZaloConversation:
         if intent == "CUSTOMER_DECISION" and (nlu.entities or {}).get("compare"):
             return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="compare")
         if intent in ("CUSTOMER_DECISION", "CUSTOMER_SUMMARY"):
+            if intent == "CUSTOMER_DECISION" and _normalize(message) in (
+                "quyet dinh", "quyet dinh cua khach", "xem quyet dinh",
+            ):
+                return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="decision")
             return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="customer")
         if intent == "RECOVERY_SCORE":
             return _Intent("RECOVERY_SCORE_EXPLANATION", cif=cif, kind="score_ask")
@@ -1267,6 +1500,21 @@ class ZaloConversation:
             changes = (nlu.entities or {}).get("changes") or _extract_changes(_normalize(message))
             return _Intent("SIMULATION", cif=cif, changes=dict(changes), kind="simulation")
         if intent == "SIMULATION_FOLLOWUP":
+            if (nlu.entities or {}).get("baseline"):
+                return _Intent(
+                    "CONTEXTUAL_FOLLOWUP",
+                    direct=("Đã quay lại dữ liệu thực của hồ sơ. Các kết quả mô phỏng trước đó "
+                            "không làm thay đổi quyết định gốc."),
+                    cif=cif, kind="baseline",
+                )
+            if "lam sao de thay" in _normalize(message) and "thay doi" in _normalize(message):
+                return _Intent(
+                    "CONTEXTUAL_FOLLOWUP",
+                    direct=("Kết quả chỉ thay đổi khi giả định làm thay đổi điều kiện mà Simulation Core "
+                            "đang sử dụng. Với dữ liệu hiện tại, Trợ lý không thể tự đề xuất hay bịa thêm biến; "
+                            "Anh/Chị có thể thử một giả định được hỗ trợ như tiền vào 7 ngày hoặc trạng thái cam kết."),
+                    cif=cif, kind="simulation_followup",
+                )
             return _Intent("CONTEXTUAL_FOLLOWUP", cif=cif, kind="simulation_followup")
         if intent == "CURRENT_CONTEXT":
             return _Intent("CURRENT_CONTEXT", kind="context")
@@ -1414,6 +1662,7 @@ class ZaloConversation:
         self._memory.last_intent = question_intent
         self._memory.last_answer_kind = answer_kind
         self._memory.last_path = path
+        self._memory.last_response_kind = answer_kind
         if question_intent in (
             "DECISION_EXPLANATION", "SIMULATION", "RECOVERY_SCORE_EXPLANATION",
             "CUSTOMER_SUMMARY", "CUSTOMER_SHOULD_CALL", "FOLLOWUP_WHAT_NEXT",

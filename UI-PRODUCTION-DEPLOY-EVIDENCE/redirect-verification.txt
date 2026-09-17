@@ -1,0 +1,9 @@
+Source code verification (public-pages.tsx):
+  Line 83: window.location.replace('/app')  — pre-auth check
+  Line 90: window.location.replace('/app')  — login submit
+
+JS bundle verification:
+  location.replace(`/app`)  — login success redirect (no next param)
+  location.replace(`/app`)  — pre-auth redirect
+
+No next.startsWith('/app') in login submit path.

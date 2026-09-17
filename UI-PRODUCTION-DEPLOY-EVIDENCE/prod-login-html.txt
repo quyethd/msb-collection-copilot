@@ -1,0 +1,3 @@
+<script type="module" crossorigin src="/assets/index-DIg_-M8T.js"></script>
+<link rel="stylesheet" crossorigin href="/assets/index-BFEZxQG4.css">
+<div id="root"></div>

@@ -14,6 +14,8 @@ export type ChatMessage = {
   createdAt: string;
   content: string;
   intent?: string;
+  topic?: string;
+  pending_clarification?: string;
   path?: string;
   sections?: any[];
   sources?: any[];
@@ -36,7 +38,7 @@ function readKey(key: string): ChatMessage[] {
 
 function writeKey(key: string, messages: ChatMessage[]) {
   try {
-    sessionStorage.setItem(key, JSON.stringify(messages.slice(-60).map(({id, role, createdAt, content, intent, path, sections, sources, status}) => ({id, role, createdAt, content, intent, path, sections, sources, status}))));
+    sessionStorage.setItem(key, JSON.stringify(messages.slice(-60).map(({id, role, createdAt, content, intent, topic, pending_clarification, path, sections, sources, status}) => ({id, role, createdAt, content, intent, topic, pending_clarification, path, sections, sources, status}))));
   } catch { /* sessionStorage can be unavailable in privacy mode */ }
 }
 
@@ -119,7 +121,9 @@ export function isNearBottom(element: {scrollHeight: number; scrollTop: number; 
 export function buildConversationContext(cif: string, messages: ChatMessage[]): ConversationContext {
   const prior = [...messages].reverse().find(message => message.role === 'assistant' && message.status === 'complete');
   const priorUser = [...messages].reverse().find(message => message.role === 'user');
-  return {active_cif: cif, previous_intent: prior?.intent, previous_topic: prior?.intent, previous_user_question: priorUser?.content, previous_path: prior?.path};
+  const ctx: ConversationContext = {active_cif: cif, previous_intent: prior?.intent, previous_topic: prior?.topic ?? prior?.intent, previous_user_question: priorUser?.content, previous_path: prior?.path};
+  if (prior?.pending_clarification) (ctx as any).pending_clarification = prior.pending_clarification;
+  return ctx;
 }
 
 export function followUpSuggestions(message?: ChatMessage): string[] {

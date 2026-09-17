@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "task": "TASK-018C",
+    "tested_head": "20bac38be6e6130e28ee1df1dc010655fca1cdd8",
+    "timestamp": "2026-09-17T09:40:06.830890+00:00"
+  },
+  "web": [
+    {
+      "id": "WEB-01",
+      "question": "Tại sao hôm nay chưa cần gọi?",
+      "intent": "DECISION_EXPLANATION",
+      "cif": "SYN002846",
+      "tools": [
+        "get_next_best_action"
+      ],
+      "summary": "Đề xuất: Chờ khách hàng tự thanh toán. Khách hàng đang quá hạn 11 ngày. Trong 7 ngày gần nhất có 48 triệu đồng tiền vào. Dòng tiền ròng 30 ngày gần nhất là 168 triệu đồng.",
+      "pass": true
+    },
+    {
+      "id": "WEB-02",
+      "question": "Điểm 47 được tính như thế nào?",
+      "intent": "SCORE_BREAKDOWN",
+      "cif": "SYN002846",
+      "tools": [],
+      "summary": "Điểm cơ hội thu hồi của SYN002846 là 47/100.",
+      "pass": true
+    },
+    {
+      "id": "WEB-03",
+      "question": "Nếu tiền vào 7 ngày bằng 0 thì sao?",
+      "intent": "SIMULATION",
+      "cif": "SYN002846",
+      "tools": [
+        "simulate_decision"
+      ],
+      "summary": "Kết quả mô phỏng:\n  Trước: Chờ khách hàng tự thanh toán · Kênh: Chưa cần liên hệ\n  Sau: Liên hệ khách hàng · Kênh: Gọi điện\n  Quyết định thay đổi: Có\nĐây là kết quả mô phỏng. Dữ liệu gốc của khách hàng không bị thay đổi.",
+      "pass": true
+    },
+    {
+      "id": "WEB-04",
+      "question": "Thế giờ làm gì?",
+      "intent": "SIMULATION",
+      "cif": "SYN002846",
+      "tools": [
+        "simulate_decision"
+      ],
+      "summary": "Kết quả mô phỏng:\n  Trước: Chờ khách hàng tự thanh toán · Kênh: Chưa cần liên hệ\n  Sau: Liên hệ khách hàng · Kênh: Gọi điện\n  Quyết định thay đổi: Có\nĐây là kết quả mô phỏng. Dữ liệu gốc của khách hàng không bị thay đổi.",
+      "pass": true
+    },
+    {
+      "id": "WEB-05",
+      "question": "CALL và CBS khác nhau thế nào?",
+      "intent": "KNOWLEDGE",
+      "cif": "SYN002846",
+      "tools": [],
+      "summary": "CALL và CBS là hai tuyến xử lý (route) trong tác nghiệp thu hồi.\n• CALL — tuyến xử lý qua gọi điện, hướng tới khách hàng cần tương tác trực tiếp để thu hồi.\n• CBS — tuyến nhắc thanh toán và theo dõi cam kết.\nKhác nhau ở hướng tiếp cận: CALL dùng gọi điện để tương tác trực tiếp; CBS nhắc thanh toán v",
+      "pass": true
+    },
+    {
+      "id": "WEB-06",
+      "question": "AI có tự quyết định hành động không?",
+      "intent": "KNOWLEDGE",
+      "cif": "SYN002846",
+      "tools": [],
+      "summary": "Không. AgentBase là bộ lập kế hoạch hội thoại, không phải bộ não nghiệp vụ.\nAgentBase có thể: hiểu câu hỏi tự nhiên, giữ ngữ cảnh, chọn công cụ được phê duyệt, truy xuất dữ liệu và kiến thức, tổ chức và giải thích câu trả lời.\nNhưng các thành phần deterministic giữ quyền quyết định:\n• Decision Core ",
+      "pass": true
+    },
+    {
+      "id": "WEB-07",
+      "question": "Điểm 47 có phải là 47% khả năng khách hàng sẽ trả nợ không?",
+      "intent": "KNOWLEDGE",
+      "cif": "SYN002846",
+      "tools": [],
+      "summary": "Không. 47/100 là Điểm Cơ hội Thu hồi dùng để hỗ trợ sắp thứ tự ưu tiên xử lý, không phải 47% xác suất khách hàng sẽ thanh toán.\nĐiểm này tổng hợp từ 6 nhóm tiêu chí nghiệp vụ (mức khẩn cấp, khả năng thanh toán, sẵn sàng thanh toán, khả năng tiếp cận, thời điểm thuận lợi, điều chỉnh chiến lược). Điểm",
+      "pass": true
+    }
+  ],
+  "zalo": [
+    {
+      "id": "ZALO-01",
+      "question": "Hôm nay tôi phải làm gì?",
+      "intent": "TODAY_PRIORITIES",
+      "cif": null,
+      "text": "Ưu tiên hôm nay (dữ liệu mô phỏng):\n• 3000 hồ sơ có quyết định từ hệ thống\n• 0 hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay\n\nTop 3 hồ sơ cần xem:\n1. SYN001346\n2. SYN000746\n3. SYN002126\nĐiểm cơ hội và hành động đề xuất của từng hồ sơ đã có trong bảng tin sáng.",
+      "pass": true
+    },
+    {
+      "id": "ZALO-02",
+      "question": "CALL và CBS khác nhau thế nào?",
+      "intent": "KNOWLEDGE",
+      "cif": null,
+      "text": "CALL và CBS là hai tuyến xử lý (route) trong tác nghiệp thu hồi.\n• CALL — tuyến xử lý qua gọi điện, hướng tới khách hàng cần tương tác trực tiếp để thu hồi.\n• CBS — tuyến nhắc thanh toán và theo dõi cam kết.\nKhác nhau ở hướng tiếp cận: CALL dùng gọi điện để tương tác trực tiếp; CBS nhắc thanh toán v",
+      "pass": true
+    },
+    {
+      "id": "ZALO-03",
+      "question": "Điểm SYN002846 được tính như thế nào?",
+      "intent": "SCORE_BREAKDOWN",
+      "cif": "SYN002846",
+      "text": "Cách tính điểm: Điểm cơ hội thu hồi của SYN002846 là 47/100. • Mức khẩn cấp nghiệp vụ: 8/20 • Khả năng thanh toán: 20/25 • Mức sẵn sàng thanh toán: 4/20 • Khả năng tiếp cận: 11/15 • Thời điểm thuận lợi: 4/15 • Điều chỉnh chiến lược: 0/5 Tổng hợp các thành phần: 47.",
+      "pass": true
+    },
+    {
+      "id": "ZALO-04",
+      "question": "Tại sao hôm nay chưa cần gọi?",
+      "intent": "DECISION_EXPLANATION",
+      "cif": "SYN002846",
+      "text": "Đề xuất hiện tại: Chờ khách hàng tự thanh toán\nVì sao: Khách hàng đang quá hạn 11 ngày. Trong 7 ngày gần nhất có 48 triệu đồng tiền vào. Dòng tiền ròng 30 ngày gần nhất là 168 triệu đồng. Hiện chưa có cam kết thanh toán cần xử lý ngay. Với các tín hiệu hiện tại, khách hàng đáp ứng điều kiện để ưu ti",
+      "pass": true
+    }
+  ],
+  "paraphrase_smoke": [
+    {
+      "message": "tai sao hom nay chua can goi",
+      "expected": "DECISION_EXPLANATION",
+      "actual": "DECISION_EXPLANATION",
+      "pass": true
+    },
+    {
+      "message": "diem 47 tinh sao",
+      "expected": "SCORE_BREAKDOWN",
+      "actual": "SCORE_BREAKDOWN",
+      "pass": true
+    },
+    {
+      "message": "neu tien vao 7 ngay = 0 thi sao",
+      "expected": "SIMULATION",
+      "actual": "SIMULATION",
+      "pass": true
+    },
+    {
+      "message": "the gio lam gi",
+      "expected": "SIMULATION",
+      "actual": "SIMULATION",
+      "pass": true
+    },
+    {
+      "message": "call voi cbs khac gi",
+      "expected": "KNOWLEDGE",
+      "actual": "KNOWLEDGE",
+      "pass": true
+    },
+    {
+      "message": "ai co tu quyet dinh ko",
+      "expected": "KNOWLEDGE",
+      "actual": "KNOWLEDGE",
+      "pass": true
+    },
+    {
+      "message": "hnay toi lam gi",
+      "expected": "TODAY_WORKLIST",
+      "actual": "TODAY_WORKLIST",
+      "pass": true
+    }
+  ],
+  "worklist": {
+    "web_summary": "Hôm nay có 3000 hồ sơ có quyết định; 0 hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay.",
+    "zalo_count": 3000,
+    "zalo_call_no_now": 0
+  }
+}

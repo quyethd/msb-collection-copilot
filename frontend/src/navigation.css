@@ -30,3 +30,14 @@ main{margin-left:260px;width:calc(100% - 260px);min-width:0}
 @media(max-width:1100px){.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.impact-columns{grid-template-columns:1fr}.title-actions{gap:8px}}
 @media(max-width:900px){.sidebar{width:76px;padding:18px 10px}.sidebar .brand{padding:0 0 24px;justify-content:center}.sidebar .brand>div:last-child,.sidebar .navitem span,.assistant-cta span,.assistant-cta>svg:last-child{display:none}.sidebar .navitem{justify-content:center;padding:13px}.assistant-cta{justify-content:center;padding:14px 8px}main{margin-left:76px;width:calc(100% - 76px)}.overview-charts,.decision-grid{grid-template-columns:1fr}.tech-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.content{padding:20px 14px}.stat-grid,.signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.scenario-form{grid-template-columns:1fr}.scenario-actions{flex-wrap:wrap}.page-title h1{font-size:21px}header{padding:0 15px}.customer-stats b{font-size:14px}}
+
+/* Admin collapsible menu (ISSUE-03) */
+.admin-separator{margin:8px 0}
+.admin-toggle{color:#657690;font-weight:500}
+.admin-toggle:hover{background:#f3f7fb;color:#243b58}
+.admin-toggle.admin-open{color:#243b58;font-weight:600}
+.admin-toggle svg:last-child{margin-left:auto}
+.admin-children{display:flex;flex-direction:column;gap:2px;padding-left:20px}
+.admin-child{font-size:12px;color:#657690;padding:7px 10px}
+.admin-child:hover{background:#f3f7fb;color:#243b58}
+.admin-child.active{background:#ffeadb;color:#c8550e}

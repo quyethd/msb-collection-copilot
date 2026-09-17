@@ -128,7 +128,9 @@ def test_responded_remembers_bounded_context(tmp_path):
     assert worker.process_message("u-1", "Và thời hạn?") == "responded"
     assert worker._client.sent == []
     context = worker._conversations.context_for("u-1")
-    assert context["active_cif"] == "SYN002846"
+    # The poller owns no case selection.  A hard-coded active CIF here would
+    # leak one chat's context into another after reconnect/retry.
+    assert "active_cif" not in context
     assert context["previous_intent"] == "DECISION_EXPLANATION"
     assert context["previous_path"] == "LOCAL"
     assert context["previous_user_question"] == "Và thời hạn?"

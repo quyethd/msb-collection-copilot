@@ -3,22 +3,37 @@ import React,{act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {describe,it,expect,vi} from 'vitest';
-import {Sidebar,Overview,Priority,primaryNav,chartCounts} from './pages';
+import {Sidebar,Overview,Priority,primaryNav,adminNav,chartCounts} from './pages';
 const rows=[{cif:'SYN002846',total_outstanding_cif:273000000,max_dpd_cif:11,recovery_opportunity_score:47,final_route:'CALL',nba:{treatment:'WAIT_SELF_CURE',channel:'NONE'}},{cif:'SYN000001',total_outstanding_cif:100,max_dpd_cif:20,recovery_opportunity_score:50,final_route:'CBS',nba:{treatment:'CONTACT',channel:'CALL'}}];
 describe('Final primary navigation',()=>{
-  it('contains the four real operational pages and the protected Zalo control',()=>{
-    expect(primaryNav.map(x=>x.page)).toEqual(['overview','priority','customer','impact','zalo']);
-    expect(primaryNav.map(x=>x.label)).toEqual(['Tổng quan','Danh sách ưu tiên','Khách hàng','Tác động dự kiến','Điều khiển Demo Zalo']);
+  it('contains three primary pages and two admin pages',()=>{
+    expect(primaryNav.map(x=>x.page)).toEqual(['overview','priority','customer']);
+    expect(primaryNav.map(x=>x.label)).toEqual(['Tổng quan','Danh sách ưu tiên','Khách hàng']);
+    expect(adminNav.map((x:any)=>x.page)).toEqual(['impact','zalo']);
+    expect(adminNav.map((x:any)=>x.label)).toEqual(['Tác động dự kiến','Điều khiển Demo Zalo']);
   });
   for(const page of primaryNav.map(x=>x.page)) it(`only ${page} is active`,()=>{
     const html=renderToStaticMarkup(<Sidebar page={page}/>);
     const node=document.createElement('div');node.innerHTML=html;
-    expect(node.querySelectorAll('nav button')).toHaveLength(5);
+    expect(node.querySelectorAll('nav button')).toHaveLength(4);
     expect(node.querySelectorAll('nav [aria-current="page"]')).toHaveLength(1);
     expect(node.querySelector('nav [aria-current="page"]')?.textContent).toBe(primaryNav.find(x=>x.page===page)?.label);
     expect(node.querySelector('.assistant-cta.active')).toBeNull();
     expect(node.querySelectorAll('.sidebar-secondary [aria-current="page"]')).toHaveLength(0);
     for(const text of ['Cảnh báo sớm','Cam kết thanh toán','Lịch sử liên hệ','Giới thiệu hệ thống']) expect(node.querySelector('nav')?.textContent).not.toContain(text);
+  });
+  it('admin children are collapsed by default for primary pages',()=>{
+    const html=renderToStaticMarkup(<Sidebar page="overview"/>);
+    const node=document.createElement('div');node.innerHTML=html;
+    expect(node.querySelector('.admin-children')).toBeNull();
+    expect(node.querySelector('.admin-toggle')?.getAttribute('aria-expanded')).toBe('false');
+  });
+  it('admin expands when current route is an admin child',()=>{
+    const html=renderToStaticMarkup(<Sidebar page="zalo"/>);
+    const node=document.createElement('div');node.innerHTML=html;
+    expect(node.querySelector('.admin-children')).not.toBeNull();
+    expect(node.querySelector('.admin-toggle')?.getAttribute('aria-expanded')).toBe('true');
+    expect(node.querySelector('.admin-child.active')?.textContent).toContain('Điều khiển Demo Zalo');
   });
   it('system overview is no longer an operational sidebar page',()=>{
     const html=renderToStaticMarkup(<Sidebar page="system-overview"/>);
@@ -40,7 +55,7 @@ describe('Final primary navigation',()=>{
     await act(async()=>root.render(<Sidebar page="zalo" cif="SYN002846" setPage={setPage} open={vi.fn()} setCopilot={vi.fn()}/>));
     const buttons=Array.from(node.querySelectorAll('nav button')) as HTMLButtonElement[];
     await act(async()=>buttons[0].click());
-    await act(async()=>buttons[4].click());
+    await act(async()=>buttons[5].click());
     expect(setPage).toHaveBeenNthCalledWith(1,'overview');
     expect(setPage).toHaveBeenNthCalledWith(2,'zalo');
     await act(async()=>root.unmount());node.remove();

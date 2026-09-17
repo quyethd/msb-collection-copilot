@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "tested_head": "414a0e88c4fa9283ea5ec4f7d2115b26bd604d68",
+    "timestamp": "2026-09-17T10:21:07.477223+00:00"
+  },
+  "web_worklist": {
+    "summary": "Hôm nay có 3000 hồ sơ có quyết định; 32 hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay.",
+    "total": 3000,
+    "call_no_call": 32
+  },
+  "zalo_worklist": {
+    "text": "Ưu tiên hôm nay (dữ liệu mô phỏng):\n• 3000 hồ sơ có quyết định từ hệ thống\n• 32 hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay\n\nTop 3 hồ sơ cần xem:\n1. SYN001346\n2. SYN000746\n3. SYN002126\nĐiểm cơ hội và hành động đề xuất của từng hồ sơ đã có trong bảng tin sáng.",
+    "total": 3000,
+    "call_no_call": 32
+  },
+  "canonical": {
+    "total_portfolio": 3000,
+    "total_route_call": 1740,
+    "call_no_call_now": 32
+  }
+}

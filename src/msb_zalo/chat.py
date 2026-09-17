@@ -447,20 +447,26 @@ def build_morning_brief(repository: ToolRepository) -> dict[str, Any]:
     """Deterministic morning priority shared by the chat and morning-brief flows."""
     rows = repository.portfolio()
     scored = sorted(rows, key=lambda row: (-int(row.get("recovery_opportunity_score", 0)), row["cif"]))
-    decisions = [invoke_tool("get_next_best_action", {"cif": row["cif"]}, repository=repository)
-                 for row in scored[:5]]
-    by_cif = {item["data"]["cif"]: item["data"] for item in decisions if item.get("ok") and item.get("data")}
-    available = [row for row in rows if row["cif"] in by_cif or row in scored]
-    call_no_now = sum(1 for row in scored[:5] if row["cif"] in by_cif
-                      and by_cif[row["cif"]]["final_route"] == "CALL"
-                      and by_cif[row["cif"]]["channel"] == "NONE")
-    top = sorted(available, key=lambda row: (-int(row.get("recovery_opportunity_score", 0)), row["cif"]))[:3]
+    # Top-5 decisions for display
+    top_decisions = [invoke_tool("get_next_best_action", {"cif": row["cif"]}, repository=repository)
+                     for row in scored[:5]]
+    by_cif = {item["data"]["cif"]: item["data"] for item in top_decisions if item.get("ok") and item.get("data")}
+    # Count CALL+NONE across the FULL portfolio, not just top-5
+    call_no_now = 0
+    for row in rows:
+        if row.get("final_route") != "CALL":
+            continue
+        nba = invoke_tool("get_next_best_action", {"cif": row["cif"]}, repository=repository)
+        if nba.get("ok") and nba.get("data", {}).get("channel") == "NONE":
+            call_no_now += 1
+    top = scored[:3]
     lines = ["☀️ Trợ lý Thu hồi Nợ — Ưu tiên hôm nay", "", "Danh mục demo:",
              f"• {len(rows)} hồ sơ có quyết định từ hệ thống",
              f"• {call_no_now} hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay", "", "Top cơ hội cần xem:"]
     for row in top:
-        decision = by_cif[row["cif"]]
-        lines.append(f"• {row['cif']} · Điểm {row.get('recovery_opportunity_score', 0)} · {_TREATMENT_VN.get(decision['treatment'], 'Theo quyết định hệ thống')}")
+        decision = by_cif.get(row["cif"])
+        treatment_label = _TREATMENT_VN.get(decision["treatment"], "Theo quyết định hệ thống") if decision else "Theo quyết định hệ thống"
+        lines.append(f"• {row['cif']} · Điểm {row.get('recovery_opportunity_score', 0)} · {treatment_label}")
     lines += ["", "Bạn có thể trả lời tin nhắn này để hỏi Trợ lý Thu hồi Nợ."]
     text = "\n".join(lines)
     if len(text) > MAX_ZALO_TEXT:

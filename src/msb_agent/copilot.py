@@ -313,13 +313,24 @@ def _today_worklist_response(cif: str, started: float, confidence: float, classi
     scored = [row for row in items if isinstance(row.get("recovery_opportunity_score"), (int, float))]
     scored.sort(key=lambda row: (-int(row["recovery_opportunity_score"]), str(row["cif"])))
     top = scored[:3]
+    # Count CALL+NONE across the FULL portfolio, not just top-5
     call_no_now = 0
-    for row in scored[:5]:
-        route = row.get("final_route")
-        if route == "CALL":
+    offset = 0
+    while True:
+        call_page = timed_caller("get_portfolio", {"limit": 100, "offset": offset, "final_route": "CALL"})
+        if not _tool_ok(call_page):
+            break
+        page_data = _tool_data(call_page)
+        page_items = page_data.get("items") or []
+        if not page_items:
+            break
+        for row in page_items:
             nba_env = timed_caller("get_next_best_action", {"cif": row["cif"]})
             if _tool_ok(nba_env) and _tool_data(nba_env).get("channel") == "NONE":
                 call_no_now += 1
+        offset += len(page_items)
+        if offset >= int(page_data.get("total_matching") or offset):
+            break
     lines = [
         f"• {total_matching} hồ sơ có quyết định từ hệ thống",
         f"• {call_no_now} hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay",

@@ -49,13 +49,16 @@ CLARIFICATION = "CLARIFICATION"
 CLARIFICATION_RESPONSE = "CLARIFICATION_RESPONSE"
 ACTIVE_CIF_QUERY = "ACTIVE_CIF_QUERY"
 KNOWLEDGE_EVALUATION = "KNOWLEDGE_EVALUATION"
+KNOWLEDGE_GOVERNANCE = "KNOWLEDGE_GOVERNANCE"
+KNOWLEDGE_SCORE_SEMANTICS = "KNOWLEDGE_SCORE_SEMANTICS"
 UNKNOWN = "UNKNOWN"
 
 CANONICAL_INTENTS = frozenset({
     GREETING, HELP, TODAY_WORKLIST, KNOWLEDGE, SCORE_VALUE, SCORE_BREAKDOWN,
     EXPLAIN_PRIORITY, CURRENT_CASE_SUMMARY, CURRENT_CASE_ACTION, SIMULATION,
     SIMULATION_FOLLOWUP, RETURN_TO_BASELINE, CLARIFICATION, CLARIFICATION_RESPONSE,
-    ACTIVE_CIF_QUERY, KNOWLEDGE_EVALUATION, UNKNOWN,
+    ACTIVE_CIF_QUERY, KNOWLEDGE_EVALUATION, KNOWLEDGE_GOVERNANCE,
+    KNOWLEDGE_SCORE_SEMANTICS, UNKNOWN,
 })
 
 
@@ -142,7 +145,7 @@ class ResolvedIntent:
 
     @property
     def is_global(self) -> bool:
-        return self.intent in (GREETING, HELP, TODAY_WORKLIST, KNOWLEDGE, KNOWLEDGE_EVALUATION)
+        return self.intent in (GREETING, HELP, TODAY_WORKLIST, KNOWLEDGE, KNOWLEDGE_EVALUATION, KNOWLEDGE_GOVERNANCE, KNOWLEDGE_SCORE_SEMANTICS)
 
 
 # --------------------------------------------------------------------------- #
@@ -157,9 +160,13 @@ _HELP_MARKERS = ("tro giup", "giup gi", "giup duoc gi", "ban lam gi", "ban giup"
 _TODAY_WORKLIST_MARKERS = ("lam gi", "can lam", "phai lam", "can thao tac", "uu tien", "viec gi", "can xu ly", "xem khach", "noi bat", "diem dang chu y")
 _TODAY_WORKLIST_EXACT = frozenset({"toi can lam gi", "viec hom nay", "hom nay lam gi", "nay lam gi", "hom nay uu tien gi", "viec gi hom nay"})
 
-_KNOWLEDGE_CONCEPT = ("la gi", "la gi vay", "la gi the", "nghia la", "de lam gi", "khac nhau", "khac nhau giua", "khac nhau the nao", "duoc tinh nhu the nao", "duoc tinh the nao", "nam o dau", "chay o dau", "dong vai tro")
+_KNOWLEDGE_CONCEPT = ("la gi", "la gi vay", "la gi the", "nghia la", "de lam gi", "khac nhau", "khac nhau giua", "khac nhau the nao", "khac gi", "duoc tinh nhu the nao", "duoc tinh the nao", "nam o dau", "chay o dau", "dong vai tro")
 
 _EVALUATION_MARKERS = ("evaluation", "bo test", "he thong ai duoc cham", "he thong danh gia ai", "ai duoc cham nhu the nao", "test danh gia he thong")
+
+_AI_GOVERNANCE_MARKERS = ("ai quyet dinh", "ai co tu quyet dinh", "tu quyet dinh", "ai quyet dinh hanh dong", "ai co the quyet dinh", "may quyet dinh", "ai dat ra quyet dinh", "ai ra quyet dinh")
+
+_SCORE_PROBABILITY_MARKERS = ("xac suat", "khac nang", "kha nang khach", "kha nang tra no", "phan tram khach", "xac suat tra")
 
 _SCORE_BREAKDOWN_MARKERS = ("duoc tinh", "tinh dua tren", "dua tren", "cach tinh diem", "tinh diem", "diem tinh", "diem duoc tinh", "diem cua", "co hoi thu hoi", "sao cao", "sao thap", "diem cao", "diem thap", "vi sao diem", "tai sao diem", "sao diem", "kha nang thanh toan", "vi sao lai", "tai sao lai", "cham", "tieu chi", "diem cham")
 _SCORE_VALUE_MARKERS = ("diem bao nhieu", "diem khach", "score khach", "diem cua khach", "diem hien tai", "bao nhieu diem")
@@ -248,6 +255,16 @@ def resolve(message: str, state: ConversationState | None = None) -> ResolvedInt
     # "điểm được tính thế nào" stays a case score, not an evaluation question.
     if _has_any(norm, _EVALUATION_MARKERS):
         return ResolvedIntent(KNOWLEDGE_EVALUATION, confidence=0.95)
+
+    # AI governance question — must be checked before decision words so
+    # "AI có tự quyết định hành động không?" is KNOWLEDGE, not DECISION.
+    if _has_any(norm, _AI_GOVERNANCE_MARKERS):
+        return ResolvedIntent(KNOWLEDGE_GOVERNANCE, confidence=1.0)
+
+    # Score-is-not-probability question — checked before score breakdown so
+    # "Điểm 47 có phải là 47% khả năng trả nợ?" is KNOWLEDGE, not SCORE.
+    if _has_any(norm, _SCORE_PROBABILITY_MARKERS) and "diem" in norm:
+        return ResolvedIntent(KNOWLEDGE_SCORE_SEMANTICS, confidence=1.0)
 
     # Knowledge CALL/CBS (global, never hijacked by active CIF)
     cbs_kind = _call_cbs_kind(norm)
@@ -407,4 +424,46 @@ CALL_CBS_COMPARISON = (
     "và theo dõi cam kết.\n"
     "Routing là tuyến xử lý, không đồng nghĩa action phải thực hiện ngay.\n"
     "Thuộc tuyến CALL không có nghĩa hôm nay cán bộ nhất thiết phải gọi."
+)
+
+# --------------------------------------------------------------------------- #
+# Score component Vietnamese labels (no raw enum leak)
+# --------------------------------------------------------------------------- #
+
+SCORE_COMPONENT_VN: dict[str, str] = {
+    "BUSINESS_URGENCY": "Mức khẩn cấp nghiệp vụ",
+    "ABILITY_TO_PAY": "Khả năng thanh toán",
+    "WILLINGNESS_TO_PAY": "Mức sẵn sàng thanh toán",
+    "CONTACTABILITY": "Khả năng tiếp cận",
+    "TIMING_OPPORTUNITY": "Thời điểm thuận lợi",
+    "STRATEGIC_ADJUSTMENT": "Điều chỉnh chiến lược",
+}
+
+
+def map_score_component(name: Any) -> str:
+    if not name:
+        return str(name or "")
+    return SCORE_COMPONENT_VN.get(str(name), str(name))
+
+
+# --------------------------------------------------------------------------- #
+# Canonical knowledge answers for AI governance and score semantics
+# --------------------------------------------------------------------------- #
+
+AI_GOVERNANCE_TEXT = (
+    "Không. AgentBase là bộ lập kế hoạch hội thoại, không phải bộ não nghiệp vụ.\n"
+    "AgentBase có thể: hiểu câu hỏi tự nhiên, giữ ngữ cảnh, chọn công cụ được phê duyệt, "
+    "truy xuất dữ liệu và kiến thức, tổ chức và giải thích câu trả lời.\n"
+    "Nhưng các thành phần deterministic giữ quyền quyết định:\n"
+    "• Decision Core quyết định route, điểm, treatment, channel.\n"
+    "• Simulation Core tính kết quả mô phỏng.\n"
+    "AI không tự ý quyết định hay thay đổi quyết định nghiệp vụ."
+)
+
+SCORE_NOT_PROBABILITY_TEXT = (
+    "Không. 47/100 là Điểm Cơ hội Thu hồi dùng để hỗ trợ sắp thứ tự ưu tiên xử lý, "
+    "không phải 47% xác suất khách hàng sẽ thanh toán.\n"
+    "Điểm này tổng hợp từ 6 nhóm tiêu chí nghiệp vụ (mức khẩn cấp, khả năng thanh toán, "
+    "sẵn sàng thanh toán, khả năng tiếp cận, thời điểm thuận lợi, điều chỉnh chiến lược). "
+    "Điểm cao hơn nghĩa là hồ sơ đáng ưu tiên xử lý hơn, không nghĩa là xác suất trả nợ cao hơn."
 )

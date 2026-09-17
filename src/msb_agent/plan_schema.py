@@ -31,6 +31,8 @@ _GOAL_TO_INTENT: dict[str, str] = {
     "today_worklist": semantics.TODAY_WORKLIST,
     "knowledge": semantics.KNOWLEDGE,
     "knowledge_evaluation": semantics.KNOWLEDGE_EVALUATION,
+    "knowledge_governance": semantics.KNOWLEDGE_GOVERNANCE,
+    "knowledge_score_semantics": semantics.KNOWLEDGE_SCORE_SEMANTICS,
     "score_value": semantics.SCORE_VALUE,
     "score_breakdown": semantics.SCORE_BREAKDOWN,
     "explain_priority": semantics.EXPLAIN_PRIORITY,

@@ -153,14 +153,7 @@ _TREATMENT_VN = {
     "WAIT_SELF_CURE": "Chờ khách hàng tự thanh toán",
 }
 
-_SCORE_COMPONENT_VN = {
-    "BUSINESS_URGENCY": "Mức khẩn cấp nghiệp vụ",
-    "ABILITY_TO_PAY": "Khả năng thanh toán",
-    "WILLINGNESS_TO_PAY": "Sẵn sàng thanh toán",
-    "CONTACTABILITY": "Khả năng tiếp cận",
-    "TIMING_OPPORTUNITY": "Thời điểm thuận lợi",
-    "STRATEGIC_ADJUSTMENT": "Điều chỉnh chiến lược",
-}
+_SCORE_COMPONENT_VN = shared_semantics.SCORE_COMPONENT_VN
 
 _RAW_WORD_VN = {
     "None": "chưa có", "null": "chưa có", "N/A": "chưa có", "NaN": "chưa có",
@@ -453,15 +446,17 @@ _LOCAL_INTENTS = frozenset({
 def build_morning_brief(repository: ToolRepository) -> dict[str, Any]:
     """Deterministic morning priority shared by the chat and morning-brief flows."""
     rows = repository.portfolio()
+    scored = sorted(rows, key=lambda row: (-int(row.get("recovery_opportunity_score", 0)), row["cif"]))
     decisions = [invoke_tool("get_next_best_action", {"cif": row["cif"]}, repository=repository)
-                 for row in rows]
+                 for row in scored[:5]]
     by_cif = {item["data"]["cif"]: item["data"] for item in decisions if item.get("ok") and item.get("data")}
-    available = [row for row in rows if row["cif"] in by_cif]
-    call_no_now = sum(1 for row in available if by_cif[row["cif"]]["final_route"] == "CALL"
+    available = [row for row in rows if row["cif"] in by_cif or row in scored]
+    call_no_now = sum(1 for row in scored[:5] if row["cif"] in by_cif
+                      and by_cif[row["cif"]]["final_route"] == "CALL"
                       and by_cif[row["cif"]]["channel"] == "NONE")
     top = sorted(available, key=lambda row: (-int(row.get("recovery_opportunity_score", 0)), row["cif"]))[:3]
     lines = ["☀️ Trợ lý Thu hồi Nợ — Ưu tiên hôm nay", "", "Danh mục demo:",
-             f"• {len(available)} hồ sơ có quyết định từ hệ thống",
+             f"• {len(rows)} hồ sơ có quyết định từ hệ thống",
              f"• {call_no_now} hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay", "", "Top cơ hội cần xem:"]
     for row in top:
         decision = by_cif[row["cif"]]
@@ -470,7 +465,7 @@ def build_morning_brief(repository: ToolRepository) -> dict[str, Any]:
     text = "\n".join(lines)
     if len(text) > MAX_ZALO_TEXT:
         raise ValueError("Morning brief exceeds the supported Zalo text limit")
-    return {"text": text, "portfolio_count": len(available), "call_route_no_call_now": call_no_now,
+    return {"text": text, "portfolio_count": len(rows), "call_route_no_call_now": call_no_now,
             "top_cifs": [row["cif"] for row in top], "synthetic_data": True}
 
 
@@ -1232,6 +1227,12 @@ class ZaloConversation:
             if kind == "cbs":
                 return _Intent("KNOWLEDGE", direct=_CBS_TEXT, kind="knowledge")
             return _Intent("KNOWLEDGE", kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_GOVERNANCE:
+            return _Intent("KNOWLEDGE", direct=shared_semantics.AI_GOVERNANCE_TEXT, kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_SCORE_SEMANTICS:
+            return _Intent("KNOWLEDGE", direct=shared_semantics.SCORE_NOT_PROBABILITY_TEXT, kind="knowledge")
+        if intent == shared_semantics.KNOWLEDGE_EVALUATION:
+            return _Intent("KNOWLEDGE", kind="knowledge")
         if intent == shared_semantics.KNOWLEDGE_EVALUATION:
             return _Intent("KNOWLEDGE", kind="knowledge")
         if intent == shared_semantics.EXPLAIN_PRIORITY:
@@ -1299,7 +1300,21 @@ class ZaloConversation:
             if norm in ("khac nhau o dau", "khac nhau gi", "so sanh di"):
                 return NLUResult(intent="KNOWLEDGE", entities={"kind": "comparison"}, confidence=1.0)
 
+        # AI governance question — must be before decision markers
+        if _has_any(norm, ("ai quyet dinh", "ai co tu quyet dinh", "tu quyet dinh", "ai co the quyet dinh", "may quyet dinh", "ai ra quyet dinh")):
+            return NLUResult(intent="KNOWLEDGE", entities={"kind": "governance"}, confidence=1.0)
+
+        # Score-is-not-probability question
+        if "diem" in norm and _has_any(norm, ("xac suat", "khac nang", "kha nang khach", "kha nang tra no")):
+            return NLUResult(intent="KNOWLEDGE", entities={"kind": "score_semantics"}, confidence=1.0)
+
         cif = _extract_cif(message)
+
+        # Decision explanation — "chua can goi" / "chua goi" / "chua lien he"
+        # must be detected even for longer phrases (GAP-08 parity fix)
+        effective_cif = cif or self._memory.last_cif
+        if _has_any(norm, ("chua can goi", "chua goi", "chua can lien he", "chua lien he", "sao chua goi", "sao chua lien he")):
+            return NLUResult(intent="CUSTOMER_DECISION", cif=effective_cif, use_context=True, confidence=0.95)
 
         if "khach khong tra no" in norm or "khach hang khong tra no" in norm:
             return NLUResult(intent="CLARIFICATION_RESPONSE", confidence=1.0)
@@ -1446,6 +1461,10 @@ class ZaloConversation:
                 return _Intent("KNOWLEDGE", direct=_CALL_TEXT, kind="knowledge")
             if kind == "cbs":
                 return _Intent("KNOWLEDGE", direct=_CBS_TEXT, kind="knowledge")
+            if kind == "governance":
+                return _Intent("KNOWLEDGE", direct=shared_semantics.AI_GOVERNANCE_TEXT, kind="knowledge")
+            if kind == "score_semantics":
+                return _Intent("KNOWLEDGE", direct=shared_semantics.SCORE_NOT_PROBABILITY_TEXT, kind="knowledge")
             return _Intent("KNOWLEDGE", kind="knowledge")
         if intent == "EXPLAIN_PRIORITY":
             return _Intent("CUSTOMER_EXPLICIT", cif=cif, kind="priority")

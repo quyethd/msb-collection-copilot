@@ -423,11 +423,14 @@ class AgentRuntime:
         changed = sim_data.get("decision_changed", False)
         before_label = _treatment_vn(before.get("treatment", "?"))
         after_label = _treatment_vn(after.get("treatment", "?"))
+        before_channel = _channel_vn(before.get("channel", "NONE"))
+        after_channel = _channel_vn(after.get("channel", "NONE"))
         template = (
             f"Kết quả mô phỏng:\n"
-            f"  Trước: {before_label} ({before.get('rule_id', '?')})\n"
-            f"  Sau: {after_label} ({after.get('rule_id', '?')})\n"
-            f"  Quyết định thay đổi: {'Có' if changed else 'Không'}"
+            f"  Trước: {before_label} · Kênh: {before_channel}\n"
+            f"  Sau: {after_label} · Kênh: {after_channel}\n"
+            f"  Quyết định thay đổi: {'Có' if changed else 'Không'}\n"
+            f"Đây là kết quả mô phỏng. Dữ liệu gốc của khách hàng không bị thay đổi."
         )
         if llm is None:
             return template, None
@@ -435,6 +438,9 @@ class AgentRuntime:
             "Bạn là trợ lý thu hồi nợ của MSB. Giải thích kết quả mô phỏng "
             "bằng tiếng Việt thân thiện với nhân viên nghiệp vụ. "
             "KHÔNG thay đổi quyết định. KHÔNG tính quyết định mới. "
+            "KHÔNG hiển thị mã quy tắc nội bộ (NBA-xxx). "
             "Chỉ giải thích thay đổi và lý do, dùng tiếng Việt.\n" + template)
         content, model = llm.complete(prompt, max_tokens=250, temperature=0)
+        if content and ("NBA-" in content or "nba-" in content.lower()):
+            content = None
         return content or template, model

@@ -303,10 +303,13 @@ def _finish_local(cif: str, intent: str, summary: str, sections: list[dict[str, 
 
 def _today_worklist_response(cif: str, started: float, confidence: float, classifier: str,
                              router_ms: float, timed_caller: ToolCaller) -> dict[str, Any]:
-    portfolio_envelope = timed_caller("get_portfolio", {})
+    portfolio_envelope = timed_caller("get_portfolio", {"limit": 100})
     items = []
+    total_matching = 0
     if _tool_ok(portfolio_envelope):
-        items = _tool_data(portfolio_envelope).get("items") or []
+        data = _tool_data(portfolio_envelope)
+        items = data.get("items") or []
+        total_matching = int(data.get("total_matching") or len(items))
     scored = [row for row in items if isinstance(row.get("recovery_opportunity_score"), (int, float))]
     scored.sort(key=lambda row: (-int(row["recovery_opportunity_score"]), str(row["cif"])))
     top = scored[:3]
@@ -318,13 +321,13 @@ def _today_worklist_response(cif: str, started: float, confidence: float, classi
             if _tool_ok(nba_env) and _tool_data(nba_env).get("channel") == "NONE":
                 call_no_now += 1
     lines = [
-        f"• {len(scored)} hồ sơ có quyết định từ hệ thống",
+        f"• {total_matching} hồ sơ có quyết định từ hệ thống",
         f"• {call_no_now} hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay",
         "", "Top hồ sơ cần xem:",
     ]
     for index, row in enumerate(top, start=1):
         lines.append(f"{index}. {row['cif']} · Điểm {row.get('recovery_opportunity_score', 0)} · {semantics.map_route(row.get('final_route'))}")
-    summary = f"Hôm nay có {len(scored)} hồ sơ có quyết định; {call_no_now} hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay."
+    summary = f"Hôm nay có {total_matching} hồ sơ có quyết định; {call_no_now} hồ sơ thuộc tuyến CALL nhưng chưa cần gọi ngay."
     sections = [{"title": "Ưu tiên hôm nay", "items": lines}]
     return _finish_local(cif, "TODAY_WORKLIST", summary, sections, started, confidence, classifier, router_ms)
 
@@ -356,7 +359,7 @@ def _score_response(cif: str, target: str, intent: str, started: float, confiden
             continue
         total += int(value)
         maximum = int(maximum) if isinstance(maximum, (int, float)) else None
-        label = semantics.TREATMENT_VN.get(name, str(name))
+        label = semantics.map_score_component(name)
         lines.append(f"• {label}: {int(value)}" + (f"/{maximum}" if maximum is not None else ""))
     if total:
         lines.append(f"Tổng hợp các thành phần: {total}.")
@@ -399,6 +402,10 @@ def _map_canonical_to_web(intent: str) -> str:
         return "GREETING_HELP"
     if intent == semantics.KNOWLEDGE_EVALUATION:
         return "KNOWLEDGE"
+    if intent == semantics.KNOWLEDGE_GOVERNANCE:
+        return "KNOWLEDGE_GOVERNANCE"
+    if intent == semantics.KNOWLEDGE_SCORE_SEMANTICS:
+        return "KNOWLEDGE_SCORE_SEMANTICS"
     if intent == semantics.CURRENT_CASE_SUMMARY:
         return "CUSTOMER_SUMMARY"
     if intent == semantics.CURRENT_CASE_ACTION:
@@ -567,6 +574,12 @@ def route_copilot(payload: dict[str, Any], caller: ToolCaller) -> dict[str, Any]
         if resolved_kind == "comparison":
             return _static_knowledge_response(cif, "KNOWLEDGE", semantics.CALL_CBS_COMPARISON, started, confidence, classifier, router_ms, "ROUTING_CALL_CBS")
         return _knowledge_response(cif, message, started, confidence, classifier, router_ms)
+
+    # Static knowledge for AI governance and score semantics (no CIF needed)
+    if intent == "KNOWLEDGE_GOVERNANCE":
+        return _static_knowledge_response(cif, "KNOWLEDGE", semantics.AI_GOVERNANCE_TEXT, started, confidence, classifier, router_ms, "AI_GOVERNANCE")
+    if intent == "KNOWLEDGE_SCORE_SEMANTICS":
+        return _static_knowledge_response(cif, "KNOWLEDGE", semantics.SCORE_NOT_PROBABILITY_TEXT, started, confidence, classifier, router_ms, "SCORE_SEMANTICS")
 
     tools: list[str] = []; tool_start = time.perf_counter()
     if intent == "SIMULATION":

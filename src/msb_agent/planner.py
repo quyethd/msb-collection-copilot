@@ -161,6 +161,8 @@ _GOAL_BY_INTENT: dict[str, str] = {
     semantics.TODAY_WORKLIST: "today_worklist",
     semantics.KNOWLEDGE: "knowledge",
     semantics.KNOWLEDGE_EVALUATION: "knowledge_evaluation",
+    semantics.KNOWLEDGE_GOVERNANCE: "knowledge_governance",
+    semantics.KNOWLEDGE_SCORE_SEMANTICS: "knowledge_score_semantics",
     semantics.SCORE_VALUE: "score_value",
     semantics.SCORE_BREAKDOWN: "score_breakdown",
     semantics.EXPLAIN_PRIORITY: "explain_priority",
